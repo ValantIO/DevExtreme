@@ -4,8 +4,10 @@
 @use "sizes" as *;
 @use "../sizes" as *;
 @use "../../base/mixins" as *;
+@use "../../base/progressBar";
 
 // adduse
+
 $generic-bar-height: 6px;
 $generic-background-width: 90%;
 $generic-progressbar-border-radius: 2px;
@@ -35,7 +37,7 @@ $generic-progress-bar-border: 1px solid $progressbar-border-color;
   background-size: $generic-background-width 5px;
   border: $generic-progress-bar-border;
   border-radius: $generic-progressbar-border-radius;
-  animation: loader 2s linear infinite;
+  animation: dx-loader 2s linear infinite;
 
   @include gradient-linear($generic-progressbar-interdeterminate-state-gradient);
 
@@ -57,7 +59,7 @@ $generic-progress-bar-border: 1px solid $progressbar-border-color;
   .dx-progressbar,
   &.dx-progressbar {
     .dx-progressbar-animating-container {
-      animation: loader-rtl 2s linear infinite;
+      animation: dx-loader-rtl 2s linear infinite;
 
       @include gradient-linear($generic-progressbar-interdeterminate-state-gradient);
 
@@ -66,7 +68,7 @@ $generic-progress-bar-border: 1px solid $progressbar-border-color;
   }
 }
 
-@keyframes loader {
+@keyframes dx-loader {
   0% {
     background-position-x: 0;
   }
@@ -76,7 +78,7 @@ $generic-progress-bar-border: 1px solid $progressbar-border-color;
   }
 }
 
-@keyframes loader-rtl {
+@keyframes dx-loader-rtl {
   0% {
     background-position-x: 0;
   }

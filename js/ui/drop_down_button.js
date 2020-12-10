@@ -16,7 +16,7 @@ import { extend } from '../core/utils/extend';
 import { isPlainObject, isDefined } from '../core/utils/type';
 import { ensureDefined } from '../core/utils/common';
 import Guid from '../core/guid';
-import { getElementWidth, getPopupWidth } from './drop_down_editor/utils';
+import { getElementWidth, getSizeValue } from './drop_down_editor/utils';
 import messageLocalization from '../localization/message';
 
 // STYLE dropDownButton
@@ -413,7 +413,7 @@ const DropDownButton = Widget.inherit({
     _popupOptionChanged: function(args) {
         const options = Widget.getOptionsFromContainer(args);
 
-        this._setPopupOption('width', () => getElementWidth(this.$element()));
+        this._setPopupOption(options);
 
         const optionsKeys = Object.keys(options);
         if(optionsKeys.indexOf('width') !== -1 || optionsKeys.indexOf('height') !== -1) {
@@ -422,7 +422,7 @@ const DropDownButton = Widget.inherit({
     },
 
     _dimensionChanged: function() {
-        const popupWidth = getPopupWidth(this.option('dropDownOptions.width'));
+        const popupWidth = getSizeValue(this.option('dropDownOptions.width'));
 
         if(popupWidth === undefined) {
             this._setPopupOption('width', () => getElementWidth(this.$element()));
@@ -634,7 +634,7 @@ const DropDownButton = Widget.inherit({
             case 'width':
             case 'height':
                 this.callBase(args);
-                this._popup && this._popup.repaint();
+                this._popup?.repaint();
                 break;
             case 'stylingMode':
                 this._buttonGroup.option(name, value);

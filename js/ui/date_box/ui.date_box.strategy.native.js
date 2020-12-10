@@ -4,12 +4,16 @@ import { inputType } from '../../core/utils/support';
 import { inArray } from '../../core/utils/array';
 import dateUtils from './ui.date_utils';
 import dateSerialization from '../../core/utils/date_serialization';
+import { extend } from '../../core/utils/extend';
+import devices from '../../core/devices';
 
 const NativeStrategy = DateBoxStrategy.inherit({
 
     NAME: 'Native',
 
-    popupConfig: noop,
+    popupConfig: function(popupConfig) {
+        return extend({}, popupConfig, { width: 'auto' });
+    },
 
     getParsedText: function(text, format) {
         if(!text) {
@@ -53,7 +57,7 @@ const NativeStrategy = DateBoxStrategy.inherit({
 
     customizeButtons: function() {
         const dropDownButton = this.dateBox.getButton('dropDown');
-        if(dropDownButton) {
+        if(devices.real().android && dropDownButton) {
             dropDownButton.on('click', function() {
                 this.dateBox._input().get(0).click();
             }.bind(this));

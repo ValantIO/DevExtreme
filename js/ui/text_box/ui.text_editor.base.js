@@ -239,7 +239,7 @@ const TextEditorBase = Editor.inherit({
     },
 
     _renderInput: function() {
-        this._$textEditorContainer = $('<div>')
+        this._$buttonsContainer = this._$textEditorContainer = $('<div>')
             .addClass(TEXTEDITOR_CONTAINER_CLASS)
             .appendTo(this.$element());
 
@@ -298,8 +298,8 @@ const TextEditorBase = Editor.inherit({
     _renderButtonContainers: function() {
         const buttons = this.option('buttons');
 
-        this._$beforeButtonsContainer = this._buttonCollection.renderBeforeButtons(buttons, this._$textEditorContainer);
-        this._$afterButtonsContainer = this._buttonCollection.renderAfterButtons(buttons, this._$textEditorContainer);
+        this._$beforeButtonsContainer = this._buttonCollection.renderBeforeButtons(buttons, this._$buttonsContainer);
+        this._$afterButtonsContainer = this._buttonCollection.renderAfterButtons(buttons, this._$buttonsContainer);
     },
 
     _clean() {
@@ -308,6 +308,7 @@ const TextEditorBase = Editor.inherit({
         this._$beforeButtonsContainer = null;
         this._$afterButtonsContainer = null;
         this._$textEditorContainer = null;
+        this._$buttonsContainer = null;
         this.callBase();
     },
 
@@ -426,11 +427,7 @@ const TextEditorBase = Editor.inherit({
         this.callBase.apply(this, arguments);
 
         const $input = this._input();
-        if(value) {
-            $input.attr('disabled', true);
-        } else {
-            $input.removeAttr('disabled');
-        }
+        $input.prop('disabled', value);
     },
 
     _toggleTabIndex: function() {
@@ -681,7 +678,7 @@ const TextEditorBase = Editor.inherit({
     },
 
     _optionChanged: function(args) {
-        const { name } = args;
+        const { name, fullName, value } = args;
 
         if(inArray(name.replace('on', ''), EVENTS_LIST) > -1) {
             this._refreshEvents();
@@ -728,14 +725,14 @@ const TextEditorBase = Editor.inherit({
                 this.callBase(args);
                 break;
             case 'inputAttr':
-                this._applyInputAttributes(this._input(), args.value);
+                this._applyInputAttributes(this._input(), this.option(name));
                 break;
             case 'stylingMode':
                 this._renderStylingMode();
                 break;
             case 'buttons':
-                if(args.fullName === args.name) {
-                    checkButtonsOptionType(args.value);
+                if(fullName === name) {
+                    checkButtonsOptionType(value);
                 }
                 this._$beforeButtonsContainer && this._$beforeButtonsContainer.remove();
                 this._$afterButtonsContainer && this._$afterButtonsContainer.remove();

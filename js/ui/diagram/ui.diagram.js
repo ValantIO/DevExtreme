@@ -1525,6 +1525,10 @@ class Diagram extends Widget {
         this._setDiagramData(data, updateExistingItemsOnly);
         this._raiseDataChangeAction();
     }
+    updateToolbox() {
+        this._diagramInstance && this._diagramInstance.refreshToolbox();
+        this._toolbox && this._toolbox.updateMaxHeight();
+    }
 
     _getDefaultOptions() {
         return extend(super._getDefaultOptions(), {
@@ -2628,10 +2632,12 @@ class Diagram extends Widget {
         };
     }
     getItemByKey(key) {
-        return this._diagramInstance && this._diagramInstance.getNativeItemByDataKey(key);
+        const nativeItem = this._diagramInstance && this._diagramInstance.getNativeItemByDataKey(key);
+        return nativeItem && this._nativeItemToDiagramItem(nativeItem);
     }
     getItemById(id) {
-        return this._diagramInstance && this._diagramInstance.getNativeItemByKey(id);
+        const nativeItem = this._diagramInstance && this._diagramInstance.getNativeItemByKey(id);
+        return nativeItem && this._nativeItemToDiagramItem(nativeItem);
     }
 
     _invalidateContextMenuCommands() {

@@ -211,9 +211,7 @@ class SchedulerWorkSpaceMonth extends SchedulerWorkSpace {
     }
 
     _isCurrentDate(cellDate) {
-        const today = new Date();
-
-        return dateUtils.sameDate(cellDate, today);
+        return dateUtils.sameDate(cellDate, this._getToday());
     }
 
     _isFirstDayOfMonth(cellDate) {
@@ -224,7 +222,7 @@ class SchedulerWorkSpaceMonth extends SchedulerWorkSpace {
         return !dateUtils.dateInRange(cellDate, this._minVisibleDate, this._maxVisibleDate, 'date');
     }
 
-    needRenderDateTimeIndication() {
+    isIndicationAvailable() {
         return false;
     }
 

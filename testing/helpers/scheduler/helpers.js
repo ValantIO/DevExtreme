@@ -1,6 +1,9 @@
 import $ from 'jquery';
 import { locate } from 'animation/translator';
 import devices from 'core/devices';
+
+import 'common.css!';
+import 'generic_light.css!';
 import 'ui/scheduler/ui.scheduler';
 
 export const TOOLBAR_TOP_LOCATION = 'top';
@@ -10,6 +13,8 @@ const SCHEDULER_ID = 'scheduler';
 const TEST_ROOT_ELEMENT_ID = 'qunit-fixture';
 
 export const CLASSES = {
+    root: '.dx-scheduler',
+
     header: '.dx-scheduler-header-panel',
     navigator: '.dx-scheduler-navigator',
     navigatorCaption: '.dx-scheduler-navigator-caption',
@@ -19,6 +24,16 @@ export const CLASSES = {
     navigatorPopoverContent: '.dx-scheduler-navigator-calendar-popover > .dx-overlay-content',
     scrollableAppointmentsContainer: '.dx-scheduler-scrollable-appointments',
     schedulerSmall: '.dx-scheduler-small',
+
+    calendar: 'dx-scheduler-navigator-calendar',
+    calendarToday: '.dx-calendar-today',
+    calendarSelected: '.dx-calendar-selected-date',
+
+    dateTableCell: '.dx-scheduler-date-table-cell',
+    allDayTableCell: '.dx-scheduler-all-day-table-cell',
+
+    appointment: '.dx-scheduler-appointment',
+    appointmentDragSource: '.dx-scheduler-appointment-drag-source',
 
     resizableHandle: {
         left: '.dx-resizable-handle-left',
@@ -30,10 +45,11 @@ export const initTestMarkup = () => $(`#${TEST_ROOT_ELEMENT_ID}`).html(`<div id=
 
 export const createWrapper = (option) => new SchedulerTestWrapper($(`#${SCHEDULER_ID}`).dxScheduler(option).dxScheduler('instance'));
 
-export const isDesktopEnvironment = () => devices.real().deviceType === 'desktop' && !devices.real().mac;
+export const isDesktopEnvironment = () => devices.real().deviceType === 'desktop';
+const isMACEnvironment = () => devices.real().mac;
 
 export const checkResultByDeviceType = (assert, callback) => {
-    if(isDesktopEnvironment()) {
+    if(isDesktopEnvironment() && !isMACEnvironment()) {
         callback();
     } else {
         const done = assert.async();
@@ -44,6 +60,40 @@ export const checkResultByDeviceType = (assert, callback) => {
     }
 };
 
+export const asyncWrapper = (assert, callback) => {
+    const done = assert.async();
+    const promise = Promise.resolve();
+
+    return callback(promise)
+        .catch(e => assert.ok(false, e.stack))
+        .then(done);
+};
+
+export const execAsync = (promise, beforeAsyncCallback, asyncCallback, timeout) => {
+    return promise.then(() => {
+        return new Promise((resolve, reject) => {
+            const execCallback = func => {
+                try {
+                    func();
+                } catch(e) {
+                    reject(e);
+                }
+            };
+
+            beforeAsyncCallback && execCallback(beforeAsyncCallback);
+
+            setTimeout(() => {
+                execCallback(asyncCallback);
+                resolve();
+            }, timeout);
+        });
+    });
+};
+
+export const asyncScrollTest = (promise, beforeAsyncCallback, asyncCallback) => {
+    const scrollTimeout = 20;
+    return execAsync(promise, beforeAsyncCallback, asyncCallback, scrollTimeout);
+};
 
 class ElementWrapper {
     constructor(selector, parent) {
@@ -75,9 +125,33 @@ class NavigatorCaption extends ClickElementWrapper {
     }
 }
 
+class CalendarCell extends ClickElementWrapper {
+    get value() {
+        return parseInt(this.getElement().find('span').eq(0).text());
+    }
+}
+
+class Calendar extends ElementWrapper {
+    constructor() {
+        super(CLASSES.calendar);
+    }
+
+    get today() {
+        return new CalendarCell(CLASSES.calendarToday);
+    }
+
+    get selected() {
+        return new CalendarCell(CLASSES.calendarSelected);
+    }
+}
+
 class NavigatorPopover extends ElementWrapper {
     get isVisible() {
         return this.content.getElement().is(':visible');
+    }
+
+    get calendar() {
+        return new Calendar();
     }
 
     get content() {
@@ -131,10 +205,10 @@ export class SchedulerTestWrapper extends ElementWrapper {
                 return $('.dx-scheduler-time-panel');
             },
             getTimeValues: () => {
-                const cellClassName = this.instance.option('currentView').indexOf('timeline') > -1 ? '.dx-scheduler-header-panel-cell' : '.dx-scheduler-time-panel-cell > div';
-                return $(cellClassName).filter((i, el) => {
-                    return $(el).text() !== '';
-                }).map((i, el) => { return $(el).text(); });
+                const cellClassName = this.instance.option('currentView').indexOf('timeline') > -1 ?
+                    '.dx-scheduler-header-panel-cell' : '.dx-scheduler-time-panel-cell > div';
+
+                return $(cellClassName).not('.dx-scheduler-header-panel-week-cell').map((i, el) => $(el).text());
             }
         },
 
@@ -198,6 +272,13 @@ export class SchedulerTestWrapper extends ElementWrapper {
             getAppointmentHeight: (index = 0) => this.appointments.getAppointment(index).get(0).getBoundingClientRect().height,
             getAppointmentPosition: (index = 0) => locate($(this.appointments.getAppointment(index))),
 
+            getDragSource: () => this.appointments
+                .getAppointments()
+                .filter(CLASSES.appointmentDragSource),
+
+            getFakeAppointment: () => $('.dx-scheduler-fixed-appointments .dx-scheduler-appointment'),
+            getFakeAppointmentWrapper: () => this.appointments.getFakeAppointment().parent(),
+
             find: (text) => {
                 return this.appointments
                     .getAppointments()
@@ -228,9 +309,7 @@ export class SchedulerTestWrapper extends ElementWrapper {
                 click: (index = 0) => this.appointments.compact.getButton(index).trigger('dxclick'),
 
                 getAppointment: (index = 0) => $('.dx-list-item').eq(index),
-
-                getFakeAppointment: () => $('.dx-scheduler-fixed-appointments .dx-scheduler-appointment')
-            }
+            },
         };
 
         this.appointmentPopup = {
@@ -290,7 +369,7 @@ export class SchedulerTestWrapper extends ElementWrapper {
         this.appointmentForm = {
             getFormInstance: () => this.appointmentPopup.getPopup().find('.dx-form').dxForm('instance'),
             getEditor: name => this.appointmentForm.getFormInstance().getEditor(name),
-            setSubject: (value) => this.appointmentForm.getEditor('text').option('value', value),
+            setSubject: (value, fieldName = 'text') => this.appointmentForm.getEditor(fieldName).option('value', value),
             setStartDate: (value) => this.appointmentForm.getEditor('startDate').option('value', value),
             setEndDate: (value) => this.appointmentForm.getEditor('endDate').option('value', value),
 
@@ -304,6 +383,12 @@ export class SchedulerTestWrapper extends ElementWrapper {
         this.workSpace = {
             getWorkSpace: () => $('.dx-scheduler-work-space'),
 
+            getMonthCurrentDay: () => parseInt($('.dx-scheduler-date-table-current-date > div').text()),
+            getWeekCurrentDay: () => {
+                const value = $('.dx-scheduler-header-panel-current-time-cell').text();
+                return parseInt(value.replace(/^\D+/g, ''));
+            },
+
             getDateTableScrollable: () => $('.dx-scheduler-date-table-scrollable'),
             getHeaderScrollable: () => $('.dx-scheduler-header-scrollable'),
             getSideBarScrollable: () => $('.dx-scheduler-sidebar-scrollable'),
@@ -313,12 +398,12 @@ export class SchedulerTestWrapper extends ElementWrapper {
 
             getRowCount: () => $('.dx-scheduler-date-table-row').length,
             getRows: (index = 0) => $('.dx-scheduler-date-table-row').eq(index),
-            getCells: () => $('.dx-scheduler-date-table-cell'),
+            getCells: () => $(CLASSES.dateTableCell),
             getSelectedCells: () => this.workSpace.getCells().filter('.dx-state-focused'),
             getFocusedCell: () => this.workSpace.getCells().filter('.dx-scheduler-focused-cell'),
             getCell: (rowIndex, cellIndex) => {
                 if(cellIndex !== undefined) {
-                    return $('.dx-scheduler-date-table-row').eq(rowIndex).find('.dx-scheduler-date-table-cell').eq(cellIndex);
+                    return $('.dx-scheduler-date-table-row').eq(rowIndex).find(CLASSES.dateTableCell).eq(cellIndex);
                 }
                 return this.workSpace.getCells().eq(rowIndex);
             },

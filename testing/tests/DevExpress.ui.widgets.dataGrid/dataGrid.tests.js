@@ -48,10 +48,8 @@ import '../../../node_modules/jsrender/jsrender.min.js';
 import DataGrid from 'ui/data_grid/ui.data_grid';
 import $ from 'jquery';
 import Class from 'core/class';
-import { EdmLiteral } from 'data/odata/utils';
 import resizeCallbacks from 'core/utils/resize_callbacks';
 import { logger } from 'core/utils/console';
-import commonUtils from 'core/utils/common';
 import typeUtils from 'core/utils/type';
 import devices from 'core/devices';
 import browser from 'core/utils/browser';
@@ -61,15 +59,11 @@ import { DataSource } from 'data/data_source/data_source';
 import ArrayStore from 'data/array_store';
 import messageLocalization from 'localization/message';
 import { setTemplateEngine } from 'core/templates/template_engine_registry';
-import gridCoreUtils from 'ui/grid_core/ui.grid_core.utils';
 import fx from 'animation/fx';
 import config from 'core/config';
-import pointerMock from '../../helpers/pointerMock.js';
-import pointerEvents from 'events/pointer';
 import ajaxMock from '../../helpers/ajaxMock.js';
 import DataGridWrapper from '../../helpers/wrappers/dataGridWrappers.js';
 import { checkDxFontIcon, DX_ICON_XLSX_FILE_CONTENT_CODE, DX_ICON_EXPORT_SELECTED_CONTENT_CODE } from '../../helpers/checkDxFontIconHelper.js';
-import 'ui/scroll_view';
 import { createDataGrid, baseModuleConfig } from '../../helpers/dataGridHelper.js';
 
 
@@ -124,79 +118,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.deepEqual(dataGrid.option('columns'), ['field1', { dataField: 'field2', name: 'field2' }], 'columns option is not changed');
     });
 
-    QUnit.test('formatValue for grouped column with calculateGroupValue', function(assert) {
-        assert.strictEqual(gridCore.formatValue('2012', { format: 'shortDate' }), '2012');
-    });
-
-    QUnit.test('DataGrid - Should hide filter row menu after losing it\'s focus', function(assert) {
-    // arrange
-        const filterRowWrapper = dataGridWrapper.filterRow;
-
-        createDataGrid({
-            filterRow: { visible: true },
-            dataSource: [{ field1: '1', field2: '2' }]
-        });
-        this.clock.tick();
-
-        // act
-        const $menu = filterRowWrapper.getMenuElement(0);
-        $menu.focus();
-
-        const menuInstance = $menu.dxMenu('instance');
-        const $root = $(menuInstance.itemElements().get(0));
-        menuInstance._showSubmenu($root);
-        const subMenu = menuInstance._visibleSubmenu;
-
-        // assert
-        assert.ok(subMenu._isVisible(), 'submenu exists');
-
-        // act
-        if(browser.msie && browser.version <= 11) {
-            const event = document.createEvent('Event');
-            event.initEvent('blur', true, true);
-            $menu[0].dispatchEvent(event);
-        } else {
-            $menu.blur();
-        }
-
-        // assert
-        assert.notOk(subMenu._isVisible(), 'submenu is hidden');
-    });
-
-    // T860356
-    QUnit.test('Filter row\'s menu icons and text should have different colors', function(assert) {
-    // arrange
-        const filterRowWrapper = dataGridWrapper.filterRow;
-
-        createDataGrid({
-            filterRow: { visible: true },
-            dataSource: [{ field1: '1' }]
-        });
-        this.clock.tick();
-
-        // act
-        const $menu = filterRowWrapper.getMenuElement(0);
-        $menu.focus();
-
-        const menuInstance = $menu.dxMenu('instance');
-        const $root = $(menuInstance.itemElements().get(0));
-        menuInstance._showSubmenu($root);
-        const subMenu = menuInstance._visibleSubmenu;
-
-        // assert
-        const $items = $('.dx-datagrid.dx-filter-menu.dx-overlay-content').find('.dx-menu-item-has-icon');
-
-        assert.ok(subMenu._isVisible(), 'submenu exists');
-        assert.ok($items.length, 'menu items');
-
-        let $currentItem;
-        for(let i = 0; i < $items.length; i++) {
-            $currentItem = $items.eq(i);
-
-            assert.notEqual($currentItem.find('.dx-menu-item-text').css('color'), $currentItem.find('.dx-icon').css('color'), 'colors are different');
-        }
-    });
-
     QUnit.test('commonColumnOptions', function(assert) {
         const dataGrid = createDataGrid({});
         assert.deepEqual(dataGrid.option('commonColumnSettings'), {
@@ -216,23 +137,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.ok(dataGrid);
         assert.equal($('#dataGrid').width(), 120);
         assert.equal($('#dataGrid').height(), 230);
-    });
-
-    QUnit.test('Correct start scroll position when RTL', function(assert) {
-        createDataGrid({
-            width: 100,
-            rtlEnabled: true,
-            columns: [{ dataField: 'field1', width: 100 }, { dataField: 'field2', width: 100 }],
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }]
-            }
-        });
-
-        this.clock.tick();
-
-        const scrollLeft = $('.dx-scrollable').dxScrollable('instance').scrollLeft();
-
-        assert.equal(scrollLeft, 100);
     });
 
     QUnit.test('Grid accessibility structure (T640539, T831996)', function(assert) {
@@ -408,17 +312,17 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     QUnit.test('Customize text called for column only (T653374)', function(assert) {
         createDataGrid({
             columns:
-        [
-            'field1',
-            {
-                dataField: 'field2',
-                customizeText: function(cellInfo) {
-                    // assert
-                    assert.equal(cellInfo.target, 'row');
-                    return cellInfo.valueText;
-                }
-            }
-        ],
+                [
+                    'field1',
+                    {
+                        dataField: 'field2',
+                        customizeText: function(cellInfo) {
+                            // assert
+                            assert.equal(cellInfo.target, 'row');
+                            return cellInfo.valueText;
+                        }
+                    }
+                ],
             dataSource: {
                 store: [{ field1: '1123123', field2: 123 }]
             }
@@ -427,293 +331,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         this.clock.tick();
     });
 
-    // T388508
-    QUnit.test('Correct start scroll position when RTL and detached container of the datagrid', function(assert) {
-    // arrange, act
-        const $dataGrid = $('<div/>').dxDataGrid({
-            width: 100,
-            rtlEnabled: true,
-            columns: [{ dataField: 'field1', width: 100 }, { dataField: 'field2', width: 100 }],
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }]
-            }
-        });
-
-        this.clock.tick();
-
-        $('#container').append($dataGrid);
-        $dataGrid.dxDataGrid('instance').updateDimensions();
-        const scrollLeft = $('.dx-scrollable').dxScrollable('instance').scrollLeft();
-
-        // assert
-        assert.equal(scrollLeft, 100);
-    });
-
-    // T475354
-    QUnit.test('Correct start scroll position when RTL and columnAutoWidth option is enabled', function(assert) {
-    // arrange, act
-        createDataGrid({
-            width: 100,
-            rtlEnabled: true,
-            columnAutoWidth: true,
-            columns: [{ dataField: 'field1', width: 100 }, { dataField: 'field2', width: 100 }],
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }]
-            }
-        });
-        this.clock.tick();
-
-        // assert
-        assert.equal($('.dx-scrollable').dxScrollable('instance').scrollLeft(), 100);
-    });
-
-    // T388508
-    QUnit.test('Scroll position after grouping when RTL', function(assert) {
-    // arrange
-        const done = assert.async();
-        const dataGrid = createDataGrid({
-            width: 200,
-            rtlEnabled: true,
-            columns: [{ dataField: 'field1', width: 100 }, { dataField: 'field2', width: 100 }, { dataField: 'field3', width: 100 }, { dataField: 'field4', width: 100 }, { dataField: 'field5', width: 100 }],
-            dataSource: [{ field1: '1', field2: '2', field3: '3', field4: '4' }]
-        });
-
-        this.clock.tick();
-        const scrollable = $('.dx-scrollable').dxScrollable('instance');
-
-        // assert
-        assert.equal(scrollable.scrollLeft(), 300, 'scroll position');
-
-        this.clock.restore();
-        scrollable.scrollTo({ x: 100 });
-
-        setTimeout(function() {
-        // act
-            dataGrid.columnOption('field1', 'groupIndex', 0);
-
-            setTimeout(function() {
-            // assert
-                assert.ok($(dataGrid.$element()).find('.dx-datagrid-rowsview').find('tbody > tr').first().hasClass('dx-group-row'));
-                assert.equal(scrollable.scrollLeft(), 100, 'scroll position after grouping');
-                done();
-            });
-        });
-    });
-
-    QUnit.test('Scroller state', function(assert) {
-        const dataGrid = createDataGrid({ width: 120, height: 230 });
-        assert.ok(dataGrid);
-        assert.ok(!dataGrid.isScrollbarVisible());
-        assert.ok(!dataGrid.getTopVisibleRowData());
-    });
-
-    // T532629
-    QUnit.test('Vertical scrollbar spacing should not be added when widget does not have height', function(assert) {
-        const dataGrid = createDataGrid({
-            dataSource: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
-            columnAutoWidth: true,
-            scrolling: {
-                useNative: true
-            },
-            columns: ['column']
-        });
-
-        // act
-        this.clock.tick();
-
-        // assert
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-headers').css('paddingRight'), '0px');
-    });
-
-    QUnit.test('rowsview should be syncronized while headersView scrolling (T844512)', function(assert) {
-        const dataGrid = createDataGrid({
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            scrolling: {
-                useNative: false
-            },
-            width: 150,
-            columnWidth: 100,
-            columns: ['column1', 'column2', 'column3']
-        });
-
-        const $headerScrollContainer = $(dataGrid.$element().find('.dx-datagrid-headers .dx-datagrid-scroll-container'));
-
-        // act
-        $headerScrollContainer.scrollLeft(50);
-        $headerScrollContainer.trigger('scroll');
-
-        $headerScrollContainer.scrollLeft(60);
-        $headerScrollContainer.trigger('scroll');
-
-        // assert
-        assert.equal($headerScrollContainer.scrollLeft(), 60, 'headersView scrollleft');
-        assert.equal(dataGrid.getScrollable().scrollLeft(), 60, 'rowsview scrollleft');
-    });
-
-    QUnit.test('headersView should be syncronized while rowsview scrolling (T844512)', function(assert) {
-        const dataGrid = createDataGrid({
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            scrolling: {
-                useNative: false
-            },
-            width: 150,
-            columnWidth: 100,
-            columns: ['column1', 'column2', 'column3']
-        });
-
-        const $headerScrollContainer = $(dataGrid.$element().find('.dx-datagrid-headers .dx-datagrid-scroll-container'));
-        const $scrollContainer = $(dataGrid.$element().find('.dx-datagrid-rowsview .dx-scrollable-container'));
-
-        // act
-        $scrollContainer.scrollLeft(50);
-        $scrollContainer.trigger('scroll');
-
-        $scrollContainer.scrollLeft(60);
-        $scrollContainer.trigger('scroll');
-
-        // assert
-        assert.equal($headerScrollContainer.scrollLeft(), 60, 'headersView scrollleft');
-        assert.equal($scrollContainer.scrollLeft(), 60, 'rowsview scrollleft');
-    });
-
-    // T608687
-    QUnit.test('Horizontal scrollbar should not be shown if container height is not integer', function(assert) {
-    // act
-        const dataGrid = createDataGrid({
-            width: 300.8,
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            columnAutoWidth: true,
-            scrolling: {
-                useNative: true
-            },
-            columns: ['column1', 'column2', 'column3']
-        });
-
-        // assert
-        assert.strictEqual(dataGrid.getScrollbarWidth(true), 0);
-    });
-
-    // T703649
-    QUnit.test('Fixed and main table should have same scroll top if showScrollbar is always', function(assert) {
-    // act
-        const dataGrid = createDataGrid({
-            height: 200,
-            dataSource: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
-            loadingTimeout: undefined,
-            scrolling: {
-                useNative: false,
-                showScrollbar: 'always'
-            },
-            columns: [{ dataField: 'column1', fixed: true }, 'column2']
-        });
-
-        const scrollable = dataGrid.getScrollable();
-
-        scrollable.scrollTo({ y: 10000 });
-
-        // assert
-        assert.ok(scrollable.scrollTop() > 0, 'content is scrolled');
-        assert.strictEqual(scrollable.scrollTop(), $(scrollable.element()).children('.dx-datagrid-content-fixed').scrollTop(), 'scroll top are same for main and fixed table');
-    });
-
-    QUnit.test('Cells in fixed columns should have "dx-col-fixed" class if FF (T823783, T875201)', function(assert) {
-    // arrange
-        const rowsViewWrapper = dataGridWrapper.rowsView;
-        const filterRowWrapper = dataGridWrapper.filterRow;
-
-        $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: {
-                store: [
-                    { id: 1, value: 'value 1' },
-                    { id: 2, value: 'value 2' }
-                ]
-            },
-            columnFixing: {
-                enabled: true
-            },
-            filterRow: {
-                visible: true
-            },
-            columns: ['id', {
-                dataField: 'value',
-                fixed: true
-            }]
-        });
-
-
-        for(let rowIndex = 0; rowIndex < 2; rowIndex++) {
-            let dataCell = rowsViewWrapper.getDataRow(rowIndex).getCell(0);
-            let fixedDataCell = rowsViewWrapper.getFixedDataRow(rowIndex).getCell(0);
-
-            // assert
-            if(browser.mozilla) {
-                assert.ok(dataCell.getElement().hasClass('dx-col-fixed'), 'dx-col-fixed');
-                assert.ok(fixedDataCell.getElement().hasClass('dx-col-fixed'), 'dx-col-fixed');
-                assert.ok(filterRowWrapper.getEditorCell(0).hasClass('dx-col-fixed'), 'dx-col-fixed');
-            } else {
-                assert.notOk(dataCell.getElement().hasClass('dx-col-fixed'), 'not dx-col-fixed');
-                assert.notOk(fixedDataCell.getElement().hasClass('dx-col-fixed'), 'not dx-col-fixed');
-                assert.notOk(filterRowWrapper.getEditorCell(0).hasClass('dx-col-fixed'), 'not dx-col-fixed');
-            }
-            dataCell = rowsViewWrapper.getDataRow(rowIndex).getCell(1);
-            assert.notOk(dataCell.getElement().hasClass('dx-col-fixed'), 'not dx-col-fixed');
-
-            fixedDataCell = rowsViewWrapper.getFixedDataRow(rowIndex).getCell(1);
-            assert.notOk(fixedDataCell.getElement().hasClass('dx-col-fixed'), 'not dx-col-fixed');
-            assert.notOk(filterRowWrapper.getEditorCell(1).hasClass('dx-col-fixed'), 'not dx-col-fixed');
-        }
-    });
-
-    QUnit.test('Cells in group row should not have \'dx-col-fixed\' class (T852898)', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: {
-                store: [
-                    { id: 1, value: 'value 1' }
-                ]
-            },
-            columns: ['id', {
-                dataField: 'value',
-                fixed: true,
-                groupIndex: 0
-            }]
-        }).dxDataGrid('instance');
-
-        // assert
-        assert.notOk($(dataGrid.getCellElement(0, 0)).hasClass('dx-col-fixed'), 'dx-col-fixed');
-        assert.notOk($(dataGrid.getCellElement(0, 1)).hasClass('dx-col-fixed'), 'dx-col-fixed');
-    });
-
-    QUnit.test('Rows with \'dx-row-alt\' should not have \'dx-col-fixed\' class on cells (T852898)', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            rowAlternationEnabled: true,
-            dataSource: {
-                store: [
-                    { id: 1, value: 'value 1' },
-                    { id: 2, value: 'value 2' }
-                ]
-            },
-            columns: ['id', {
-                dataField: 'value',
-                fixed: true
-            }]
-        }).dxDataGrid('instance');
-
-        // assert
-        assert.ok($(dataGrid.getRowElement(1)).hasClass('dx-row-alt'), 'first row is alt');
-        assert.notOk($(dataGrid.getCellElement(1, 0)).hasClass('dx-col-fixed'), 'dx-col-fixed');
-        assert.notOk($(dataGrid.getCellElement(1, 1)).hasClass('dx-col-fixed'), 'dx-col-fixed');
-    });
-
     QUnit.test('noDataText option', function(assert) {
-    // act
+        // act
         const noDataText = 'Custom no data';
         const dataGrid = $('#dataGrid').dxDataGrid({
             noDataText: noDataText
@@ -722,140 +341,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.strictEqual(dataGrid.getView('rowsView').option('noDataText'), noDataText, 'valid noDataText in rowsView options');
     });
 
-    QUnit.test('Apply sort/group dataSource options', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            commonColumnSettings: {
-                autoExpandGroup: true
-            },
-            columns: ['field1', 'field2'],
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }],
-                group: 'field1',
-                sort: 'field2'
-            }
-        }).dxDataGrid('instance');
-
-        assert.deepEqual(dataGrid.getController('data')._dataSource.group(), [{ selector: 'field1', desc: false, isExpanded: true }]);
-        assert.deepEqual(dataGrid.getController('data')._dataSource.sort(), [{ selector: 'field2', desc: false }]);
-    });
-
-    QUnit.test('Change row expand state on row click', function(assert) {
-        let isRowClicked = false;
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2'],
-            loadingTimeout: undefined,
-            onRowPrepared: function(args) {
-                assert.equal(typeUtils.isRenderer(args.rowElement), !!config().useJQuery, 'rowElement is correct');
-                if(args.rowType === 'group') {
-                    if(isRowClicked) {
-                        assert.ok(!args.component.isRowExpanded(args.key), 'after click on group row it\'s closed');
-                    } else {
-                        assert.ok(args.component.isRowExpanded(args.key), 'group row is expanded');
-                    }
-                }
-            },
-            grouping: {
-                expandMode: 'rowClick'
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '1', field2: '4' }],
-                group: 'field1'
-            }
-        }).dxDataGrid('instance');
-
-        isRowClicked = true;
-        $(dataGrid.$element())
-            .find('.dx-datagrid-rowsview tr')
-            .eq(0)
-            .trigger('dxclick');
-
-    });
-
-    QUnit.test('DataGrid - CustomStore.load should contain the \'select\' parameter after grouping operations (T817511)', function(assert) {
-    // arrange
-        const arrayStore = new ArrayStore({
-            key: 'id',
-            data: [
-                { id: 0, text: 'Text', countryId: 0, cityId: 0 },
-                { id: 1, text: 'Text', countryId: 0, cityId: 1 },
-                { id: 2, text: 'Text', countryId: 1, cityId: 0 },
-                { id: 3, text: 'Text', countryId: 1, cityId: 1 },
-            ]
-        });
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: {
-                key: 'id',
-                select: ['id', 'text', 'countryId', 'cityId'],
-                load: function(options) {
-                    const d = $.Deferred();
-
-                    // assert
-                    assert.notEqual(options.select, undefined, 'options.select is defined');
-
-                    setTimeout(function() {
-                        const result = {};
-                        arrayStore.load(options).done(function(data) {
-                            result.data = data;
-
-                            if(options.group) {
-                                data.forEach(item => {
-                                    item.count = item.items.length;
-                                    item.items = null;
-                                });
-                            }
-                        });
-                        if(options.requireGroupCount) {
-                            arrayStore.load({ filter: options.filter, group: options.group }).done(function(groupedData) {
-                                result.groupCount = groupedData.length;
-                            });
-                        }
-                        if(options.requireTotalCount) {
-                            arrayStore.totalCount(options).done(function(totalCount) {
-                                result.totalCount = totalCount;
-                            });
-                        }
-
-                        d.resolve(result);
-                    });
-
-                    return d;
-                },
-                group: [{
-                    selector: 'countryId',
-                    isExpanded: false
-                }, {
-                    selector: 'cityId',
-                    isExpanded: false
-                }]
-            },
-            remoteOperations: {
-                groupPaging: true
-            },
-            groupPanel: {
-                visible: true
-            },
-            grouping: {
-                autoExpandAll: false
-            }
-        }).dxDataGrid('instance');
-        this.clock.tick();
-
-        // act
-        dataGrid.expandRow([0]);
-        this.clock.tick();
-
-        dataGrid.expandRow([0, 0]);
-        this.clock.tick();
-
-        dataGrid.columnOption('cityId', 'groupIndex', undefined);
-        this.clock.tick();
-    });
-
-
     // T843705
     QUnit.test('DataSource should be reset after changing remoteOperations', function(assert) {
-    // arrange
+        // arrange
         let storeLoadOptions;
         const dataSource = new DataSource({
             load: function(loadOptions) {
@@ -896,172 +384,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         }, 'loadOptions');
     });
 
-
-    // T553981
-    QUnit.test('Row expand state should not be changed on row click when scrolling mode is \'infinite\'', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2'],
-            loadingTimeout: undefined,
-            grouping: {
-                expandMode: 'rowClick'
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '1', field2: '4' }],
-                group: 'field1'
-            },
-            scrolling: {
-                mode: 'infinite'
-            }
-        }).dxDataGrid('instance');
-
-        // assert
-        assert.ok(dataGrid.isRowExpanded(['1']), 'first group row is expanded');
-
-        // act
-        $(dataGrid.$element())
-            .find('.dx-datagrid-rowsview .dx-group-row')
-            .first()
-            .trigger('dxclick');
-
-        // assert
-        assert.ok(dataGrid.isRowExpanded(['1']), 'first group row is expanded');
-    });
-
-    // T618080
-    QUnit.test('Fix group footer presents at the end of virtual pages', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['C0', 'C1', 'C2'],
-            loadingTimeout: undefined,
-            dataSource: {
-                store: [
-                    { C0: 10, C1: 11, C2: 12 }, { C0: 10, C1: 11, C2: 12 },
-                    { C0: 10, C1: 12, C2: 12 }
-                ],
-                group: ['C0', 'C1']
-            },
-            paging: {
-                pageSize: 2
-            },
-            scrolling: {
-                mode: 'infinite'
-            },
-            summary: {
-                groupItems: [
-                    {
-                        column: 'C2',
-                        summaryType: 'count',
-                        showInGroupFooter: true
-                    }
-                ]
-            },
-        }).dxDataGrid('instance');
-
-        // arrange, assert
-        const visibleRows = dataGrid.getVisibleRows();
-        assert.equal(visibleRows.length, 9, 'visible rows count');
-        assert.equal(visibleRows.filter(function(item) { return item.rowType === 'groupFooter'; }).length, 3, 'group footers count');
-        assert.equal(visibleRows[1].rowType, 'group', 'group row');
-        assert.equal(visibleRows[3].rowType, 'data', 'data row');
-        assert.equal(visibleRows[4].rowType, 'groupFooter', 'group footer row');
-        assert.equal(visibleRows[5].rowType, 'group', 'group row');
-        assert.equal(visibleRows[6].rowType, 'data', 'data row');
-        assert.equal(visibleRows[7].rowType, 'groupFooter', 'group footer row');
-        assert.equal(visibleRows[8].rowType, 'groupFooter', 'group footer row');
-    });
-
-    // T756152
-    QUnit.test('CellTemplate should not be rendered on the group row when summary is enabled', function(assert) {
-    // arrange
-        const loadResult = [{
-            ID: 1,
-            OrderNumber: 777,
-            TotalValue: 12175,
-            BoolValue: true,
-            CustomerName: 'Test1'
-        }, {
-            ID: 4,
-            OrderNumber: 777,
-            TotalValue: 16550,
-            BoolValue: false,
-            CustomerName: 'Test1'
-        }];
-
-        $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: loadResult,
-            keyExpr: 'ID',
-            showBorders: true,
-            groupPanel: {
-                visible: true
-            },
-            columns: [
-                {
-                    dataField: 'CustomerName',
-                    groupIndex: 0
-                }, 'OrderNumber', 'TotalValue', {
-                    dataField: 'BoolValue',
-                    cellTemplate: function(container, options) {
-                        $('<div>').dxCheckBox({
-                            value: options.data.BoolValue,
-                            disabled: true
-                        }).appendTo(container);
-                    }
-                }
-            ],
-            summary: {
-                groupItems: [{
-                    column: 'TotalValue',
-                    summaryType: 'sum',
-                    alignByColumn: true
-                }]
-            }
-        });
-
-        // assert
-        assert.equal($('.dx-group-row').eq(0).find('.dx-checkbox').length, 0, 'group row does not contain checkbox');
-    });
-
-    // T601360
-    QUnit.test('Update cell after infinit scrolling and editing must processing after all pages has been loaded', function(assert) {
-    // arrange
-        const items = [{ value: '0' }, { value: '1' }, { value: '2' }, { value: '3' }];
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            remoteOperations: true,
-            dataSource: {
-                load: function(options) {
-                    const d = $.Deferred();
-                    setTimeout(function() {
-                        d.resolve({
-                            data: items.slice(options.skip, options.skip + options.take),
-                            totalCount: items.length
-                        });
-                    }, 10);
-                    return d;
-                }
-            },
-            height: 50,
-            paging: { pageSize: 2 },
-            scrolling: { mode: 'virtual' }
-        }).dxDataGrid('instance');
-
-        this.clock.tick(20);
-
-        items[0].value = 'test';
-
-        let firstCellTextInDone;
-
-        // act
-        dataGrid.refresh().done(function() {
-            firstCellTextInDone = $(dataGrid.getCellElement(0, 0)).text();
-        });
-        this.clock.tick(20);
-
-        // assert
-        assert.equal(firstCellTextInDone, 'test');
-    });
-
     QUnit.test('cellClick/cellHoverChanged handler should be executed when define via \'on\' method', function(assert) {
         let cellClickCount = 0;
         let cellHoverChangedCount = 0;
@@ -1097,475 +419,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(cellHoverChangedCount, 2, 'Cell hover state changes 2 times');
     });
 
-    QUnit.test('Default context menu shown when click on header panel items', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2'],
-            loadingTimeout: undefined,
-            editing: {
-                allowAdding: true
-            },
-            grouping: {
-                contextMenuEnabled: true
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '1', field2: '4' }]
-            }
-        }).dxDataGrid('instance');
-        const e = $.Event('dxcontextmenu');
-
-        $(dataGrid.$element())
-            .find('.dx-datagrid-addrow-button')
-            .trigger(e);
-
-        assert.notOk(e.isDefaultPrevented(), 'default behavior should not be prevented');
-    });
-
-    QUnit.test('Default context menu shown when click on command column', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2'],
-            loadingTimeout: undefined,
-            editing: {
-                mode: 'row',
-                allowUpdating: true,
-                allowDeleting: true
-            },
-            grouping: {
-                contextMenuEnabled: true
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '1', field2: '4' }]
-            }
-        }).dxDataGrid('instance');
-        const e = $.Event('dxcontextmenu');
-
-        $(dataGrid.$element())
-            .find('.dx-header-row .dx-command-edit')
-            .first()
-            .trigger(e);
-
-        assert.notOk(e.isDefaultPrevented(), 'default behavior should not be prevented');
-    });
-
-    QUnit.test('Default context menu shown when click on rows', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2'],
-            loadingTimeout: undefined,
-            grouping: {
-                contextMenuEnabled: true
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '1', field2: '4' }]
-            }
-        }).dxDataGrid('instance');
-        const e = $.Event('dxcontextmenu');
-
-        $(dataGrid.$element())
-            .find('.dx-datagrid-rowsview .dx-row')
-            .first()
-            .trigger(e);
-
-        assert.notOk(e.isDefaultPrevented(), 'default behavior should not be prevented');
-    });
-
-    QUnit.test('Check grouping context menu operability', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2'],
-            loadingTimeout: undefined,
-            grouping: {
-                contextMenuEnabled: true
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '1', field2: '4' }]
-            }
-        }).dxDataGrid('instance');
-
-        $(dataGrid.$element())
-            .find('.dx-header-row td')
-            .eq(1)
-            .trigger('dxcontextmenu');
-
-        $('.dx-datagrid .dx-menu-item') // click on "group by this"
-            .eq(3)
-            .trigger('dxclick');
-
-        this.clock.tick(300);
-
-        assert.deepEqual(dataGrid.getController('data')._dataSource.group(), [{ selector: 'field2', desc: false, isExpanded: true }], 'datasource grouping is up to date');
-        assert.equal(dataGrid.columnOption('field2', 'groupIndex'), 0, 'Group by field2');
-
-        $(dataGrid.$element())
-            .find('.dx-header-row td')
-            .eq(1)
-            .trigger('dxcontextmenu');
-
-        $('.dx-datagrid .dx-menu-item') // click on "clear grouping"
-            .eq(4)
-            .trigger('dxclick');
-
-        this.clock.tick(300);
-
-        assert.equal(dataGrid.columnOption('field2', 'groupIndex'), undefined, 'field2 has no groupIndex');
-    });
-
-    QUnit.test('Show contextMenu for hidden adaptive columns', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            grouping: {
-                contextMenuEnabled: true
-            },
-            columnHidingEnabled: true,
-            width: 200,
-            dataSource: [
-                { field1: '1', field2: '2', field3: '3', field4: '4' },
-                { field1: '1', field2: '4', field3: '3', field4: '5' }
-            ]
-        }).dxDataGrid('instance');
-
-        $('.dx-datagrid .dx-datagrid-adaptive-more')
-            .eq(0)
-            .trigger('dxclick');
-
-        $('.dx-datagrid .dx-adaptive-detail-row')
-            .find('.dx-field-item-label-text')
-            .eq(0)
-            .trigger('dxcontextmenu');
-
-        const items = $('.dx-datagrid .dx-menu-item');
-        assert.equal(items.length, 5, 'context menu is generated');
-
-        items.eq(3).trigger('dxclick');
-
-        assert.deepEqual(dataGrid.getController('data')._dataSource.group(), [{ selector: 'field3', desc: false, isExpanded: true }], 'datasource grouping is up to date');
-        assert.equal(dataGrid.columnOption('field3', 'groupIndex'), 0, 'Group by field3');
-    });
-
-    // T708072
-    QUnit.test('Expand adaptive detail row after scrolling if scrolling mode is virtual', function(assert) {
-        const array = [];
-
-        for(let i = 0; i < 10; i++) {
-            array.push({ id: i, value: 'text' + i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 200,
-            height: 200,
-            dataSource: array,
-            keyExpr: 'id',
-            columnHidingEnabled: true,
-            paging: {
-                pageSize: 2
-            },
-            scrolling: {
-                mode: 'virtual'
-            },
-            loadingTimeout: undefined,
-            legacyRendering: true,
-            columns: [{
-                dataField: 'value'
-            }, {
-                dataField: 'hidden',
-                width: 10000
-            }],
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.expandAdaptiveDetailRow(0);
-        dataGrid.pageIndex(1);
-        dataGrid.getController('data').toggleExpandAdaptiveDetailRow(1);
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows()[1].rowType, 'data', 'row 1 type');
-        assert.strictEqual(dataGrid.getVisibleRows()[1].key, 1, 'row 1 key');
-        assert.strictEqual(dataGrid.getVisibleRows()[2].rowType, 'detailAdaptive', 'row 2 type');
-        assert.strictEqual(dataGrid.getVisibleRows()[2].key, 1, 'row 2 key');
-    });
-
-    QUnit.test('Expand/Collapse adaptive detail row after scrolling if scrolling mode and rowRendering are virtual and paging.enabled is false (T815886)', function(assert) {
-        const array = [];
-        let visibleRows;
-        let expandedRowVisibleIndex;
-
-        for(let i = 0; i < 100; i++) {
-            array.push({ id: i, value: 'text' + i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            width: 200,
-            height: 200,
-            dataSource: array,
-            keyExpr: 'id',
-            columnHidingEnabled: true,
-            paging: {
-                enabled: false
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            columns: [
-                'value',
-                { dataField: 'hidden', width: 1000 }
-            ],
-        }).dxDataGrid('instance');
-        const dataController = dataGrid.getController('data');
-
-        // act
-        dataGrid.navigateToRow(42);
-        dataController.toggleExpandAdaptiveDetailRow(42);
-
-        // arrange
-        visibleRows = dataController.getVisibleRows();
-        expandedRowVisibleIndex = dataController.getRowIndexByKey(42);
-        // assert
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].rowType, 'detailAdaptive', 'Adaptive row');
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].key, 42, 'Check adaptive row key');
-
-        // act
-        dataController.toggleExpandAdaptiveDetailRow(42);
-
-        // arrange
-        visibleRows = dataController.getVisibleRows();
-        expandedRowVisibleIndex = dataController.getRowIndexByKey(42);
-        // assert
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].rowType, 'data', 'Adaptive row');
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].key, 43, 'Check next row key');
-    });
-
-    // T815886
-    QUnit.test('Expand/Collapse adaptive detail row after expanding other adaptive detail row and scrolling if scrolling mode and rowRendering are virtual', function(assert) {
-        const array = [];
-        let visibleRows;
-        let expandedRowVisibleIndex;
-
-        for(let i = 0; i < 100; i++) {
-            array.push({ id: i, value: 'text' + i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            width: 200,
-            height: 200,
-            dataSource: array,
-            keyExpr: 'id',
-            columnHidingEnabled: true,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            columns: [
-                'value',
-                { dataField: 'hidden', width: 1000 }
-            ],
-        }).dxDataGrid('instance');
-        const dataController = dataGrid.getController('data');
-
-        // act
-        dataController.toggleExpandAdaptiveDetailRow(1);
-
-        dataGrid.getScrollable().scrollTo({ y: 800 });
-
-        dataController.toggleExpandAdaptiveDetailRow(28);
-
-        // arrange
-        visibleRows = dataController.getVisibleRows();
-        expandedRowVisibleIndex = dataController.getRowIndexByKey(28);
-        // assert
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].rowType, 'detailAdaptive', 'Adaptive row');
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].key, 28, 'Check adaptive row key');
-
-        // act
-        dataController.toggleExpandAdaptiveDetailRow(28);
-
-        // arrange
-        visibleRows = dataController.getVisibleRows();
-        expandedRowVisibleIndex = dataController.getRowIndexByKey(28);
-        // assert
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].rowType, 'data', 'Adaptive row');
-        assert.equal(visibleRows[expandedRowVisibleIndex + 1].key, 29, 'Check next row key');
-    });
-
-    QUnit.test('Group panel should set correct \'max-width\' after clear grouping', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: {
-                store: [
-                    { field1: '1', field2: '2', field3: '3', field4: '4', field5: '5' },
-                    { field1: '11', field2: '22', field3: '33', field4: '44', field5: '55' }]
-            },
-            width: 460,
-            groupPanel: {
-                emptyPanelText: 'Long long long long long long long long long long long text',
-                visible: true
-            },
-            editing: { allowAdding: true, mode: 'batch' },
-            columnChooser: {
-                enabled: true
-            }
-        }).dxDataGrid('instance');
-        const $dataGrid = $(dataGrid.element());
-
-        this.clock.tick();
-        assert.equal($dataGrid.find('.dx-toolbar-item-invisible').length, 4, '4 toolbar items are hidden, group panel has a long message');
-
-        dataGrid.columnOption('field2', 'groupIndex', 0);
-        this.clock.tick();
-
-        assert.equal($dataGrid.find('.dx-toolbar-item-invisible').length, 0, 'all toolbar items are visible, group panel has a group with short name');
-
-        dataGrid.clearGrouping();
-        this.clock.tick();
-        assert.equal($dataGrid.find('.dx-toolbar-item-invisible').length, 4, '4 toolbar items are hidden after clear grouping');
-    });
-
-    QUnit.test('Check grouping context menu operability (ungroup one column)', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', { dataField: 'field2', groupIndex: 1, showWhenGrouped: true }, { dataField: 'field3', groupIndex: 0, showWhenGrouped: true }],
-            sorting: {
-                mode: 'none'
-            },
-            loadingTimeout: undefined,
-            allowGrouping: true,
-            grouping: {
-                contextMenuEnabled: true
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2', field3: '34' }, { field1: '1', field2: '4', field3: '8' }]
-            }
-        }).dxDataGrid('instance');
-
-        $(dataGrid.$element())
-            .find('.dx-header-row td')
-            .eq(3)
-            .trigger('dxcontextmenu');
-
-        $('.dx-datagrid .dx-menu-item') // click on "Ungroup this"
-            .eq(1)
-            .trigger('dxclick');
-
-        this.clock.tick(300);
-
-        assert.equal(dataGrid.columnOption('field2', 'groupIndex'), undefined, 'field2 has no groupIndex');
-        assert.equal(dataGrid.columnOption('field3', 'groupIndex'), 0, 'field3 save its groupIndex');
-    });
-
-    QUnit.test('Ungroup one column via group row context menu', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', { dataField: 'field2', groupIndex: 1, showWhenGrouped: true }, { dataField: 'field3', groupIndex: 0, showWhenGrouped: true }],
-            loadingTimeout: undefined,
-            sorting: {
-                mode: 'none'
-            },
-            allowGrouping: true,
-            grouping: {
-                contextMenuEnabled: true
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2', field3: '34' }, { field1: '1', field2: '4', field3: '8' }]
-            }
-        }).dxDataGrid('instance');
-
-        $(dataGrid.$element())
-            .find('.dx-group-row')
-            .eq(1)
-            .find('td')
-            .first()
-            .trigger('dxcontextmenu');
-
-        $('.dx-datagrid .dx-menu-item') // click on "Ungroup this"
-            .eq(0)
-            .trigger('dxclick');
-
-        this.clock.tick(300);
-
-        assert.equal(dataGrid.columnOption('field2', 'groupIndex'), undefined, 'field2 has no groupIndex');
-        assert.equal(dataGrid.columnOption('field3', 'groupIndex'), 0, 'field3 save its groupIndex');
-    });
-
-    QUnit.test('Ungroup all columns via group row context menu', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', { dataField: 'field2', groupIndex: 1, showWhenGrouped: true }, { dataField: 'field3', groupIndex: 0, showWhenGrouped: true }],
-            loadingTimeout: undefined,
-            allowGrouping: true,
-            grouping: {
-                contextMenuEnabled: true
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2', field3: '34' }, { field1: '1', field2: '4', field3: '8' }]
-            }
-        }).dxDataGrid('instance');
-
-        $(dataGrid.$element())
-            .find('.dx-group-row td')
-            .eq(1)
-            .trigger('dxcontextmenu');
-
-        $('.dx-datagrid .dx-menu-item') // click on "clear groupings"
-            .eq(1)
-            .trigger('dxclick');
-
-        this.clock.tick(300);
-
-        assert.equal(dataGrid.columnOption('field2', 'groupIndex'), undefined, 'field2 has no groupIndex');
-        assert.equal(dataGrid.columnOption('field3', 'groupIndex'), undefined, 'field3 has no groupIndex');
-    });
-
-    QUnit.test('Grouping with context menu - check custom texts', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2', { dataField: 'field3', showWhenGrouped: true }],
-            loadingTimeout: undefined,
-            grouping: {
-                contextMenuEnabled: true,
-                texts: {
-                    groupByThisColumn: 'test1',
-                    ungroup: 'test2',
-                    ungroupAll: 'test3'
-                }
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2', field3: '34' }, { field1: '1', field2: '4', field3: '8' }]
-            }
-        }).dxDataGrid('instance');
-
-        $(dataGrid.$element())
-            .find('.dx-header-row td')
-            .eq(2)
-            .trigger('dxcontextmenu');
-
-        const $menuItems = $('.dx-datagrid .dx-menu-item');
-
-        assert.equal($menuItems.eq(3).text(), 'test1', 'Custom \'group\' message');
-        assert.equal($menuItems.eq(4).text(), 'test2', 'Custom \'ungroup\' message');
-        assert.equal($menuItems.eq(5).text(), 'test3', 'Custom \'cleanGrouping\' message');
-    });
-
-    QUnit.test('Context menu does not have grouping items when \'contextMenuEnabled\' is false', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2', 'field3'],
-            loadingTimeout: undefined,
-            allowGrouping: false,
-            grouping: {
-                contextMenuEnabled: false
-            },
-            dataSource: {
-                store: [{ field1: '1', field2: '2', field3: '34' }, { field1: '1', field2: '4', field3: '8' }]
-            }
-        }).dxDataGrid('instance');
-
-        $(dataGrid.$element())
-            .find('.dx-header-row td')
-            .eq(2)
-            .trigger('dxcontextmenu');
-
-        const $menuItems = $('.dx-datagrid .dx-menu-item');
-
-        assert.ok(!$menuItems.find(':contains(Group this)').length, 'Menu items doesn\'t contain \'group\' command');
-        assert.ok(!$menuItems.find(':contains(Ungroup this)').length, 'Menu items doesn\'t contain \'ungroup\' command');
-        assert.ok(!$menuItems.find(':contains(Clear grouping)').length, 'Menu items doesn\'t contain \'clear grouping\' command');
-    });
-
     // T860356
     QUnit.test('Context menu item\'s color and text should have the same color', function(assert) {
         const dataGrid = $('#dataGrid').dxDataGrid({
@@ -1598,10 +451,12 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         $('#dataGrid').height(400);
         let templatesRenderedCount = 0;
         $('#dataGrid').dxDataGrid({
-            columns: [{ dataField: 'field1', cellTemplate: function(cellElement) {
-                assert.equal(typeUtils.isRenderer(cellElement), !!config().useJQuery, 'cellElement is correct');
-                templatesRenderedCount++;
-            } }],
+            columns: [{
+                dataField: 'field1', cellTemplate: function(cellElement) {
+                    assert.equal(typeUtils.isRenderer(cellElement), !!config().useJQuery, 'cellElement is correct');
+                    templatesRenderedCount++;
+                }
+            }],
             loadingTimeout: undefined,
             dataSource: {
                 store: [{ field1: '1', field2: '2' }, { field1: '3', field2: '4' }],
@@ -1616,10 +471,12 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         let templatesRenderedCount = 0;
         // act
         const $element = $('#dataGrid').dxDataGrid({
-            columns: [{ dataField: 'field1', headerCellTemplate: function(container) {
-                assert.equal(typeUtils.isRenderer(container), !!config().useJQuery, 'headerCellElement is correct');
-                $(container).addClass('field1-header'); templatesRenderedCount++;
-            } }]
+            columns: [{
+                dataField: 'field1', headerCellTemplate: function(container) {
+                    assert.equal(typeUtils.isRenderer(container), !!config().useJQuery, 'headerCellElement is correct');
+                    $(container).addClass('field1-header'); templatesRenderedCount++;
+                }
+            }]
         });
 
         // assert
@@ -1652,51 +509,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         checkDxFontIcon(assert, '.dx-datagrid-export-button .dx-icon', DX_ICON_XLSX_FILE_CONTENT_CODE);
     });
 
-    // T916093
-    ['standard', 'virtual', 'infinite'].forEach(scrollingMode => {
-        QUnit.test(`LoadPanel should be shown during export (scrolling.mode = ${scrollingMode})`, function(assert) {
-            $('#dataGrid').dxDataGrid({
-                height: 400,
-                dataSource: {
-                    load: function(loadOptions) {
-                        const d = $.Deferred();
-
-                        const data = [];
-                        const start = loadOptions.skip || 0;
-                        const end = loadOptions.skip + loadOptions.take || 1000;
-                        for(let i = start; i < end; i++) {
-                            data.push({
-                                id: i + 1
-                            });
-                        }
-
-                        setTimeout(function() {
-                            d.resolve({ data: data, totalCount: 1000 });
-                        }, 2000);
-
-                        return d;
-                    }
-                },
-                remoteOperations: true,
-                scrolling: {
-                    mode: scrollingMode
-                },
-                export: {
-                    enabled: true
-                }
-            });
-
-            this.clock.tick(4500);
-
-            $('.dx-datagrid-export-button').trigger('dxclick');
-
-            this.clock.tick(1000);
-            const $loadPanel = $('.dx-loadpanel');
-
-            assert.notOk($loadPanel.hasClass('dx-state-invisible'), 'load panel is visible');
-        });
-    });
-
     // T615174
     QUnit.test('Last cell width != auto if sum of cells width == container width', function(assert) {
         $('#container').width(150);
@@ -1722,7 +534,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T590907
     QUnit.test('Change column width via option method', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = $('#dataGrid').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [{}],
@@ -1739,7 +551,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('Change column width via columnOption method (T628065)', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = $('#dataGrid').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [{}],
@@ -1757,52 +569,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.strictEqual(dataGrid.columnOption(1, 'visibleWidth'), 'auto');
     });
 
-    QUnit.skip('Change column sortOrder via option method with canceling in onOptionChanged handler', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [],
-            columns: [{ dataField: 'column1', sortOrder: 'asc' }],
-            onOptionChanged: function(args) {
-                if(args.fullName === 'columns[0].sortOrder') {
-                    dataGrid.option('columns[0].sortOrder', 'asc');
-                }
-            }
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.option('columns[0].sortOrder', 'desc');
-
-        // assert
-        assert.strictEqual(dataGrid.columnOption(0, 'sortOrder'), 'asc', 'sortOrder internal state');
-        assert.strictEqual(dataGrid.option('columns[0].sortOrder'), 'asc', 'sortOrder option value');
-    });
-
-    // T734761
-    QUnit.skip('Change column sortOrder via columnOption method with canceling in onOptionChanged handler', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [],
-            columns: [{ dataField: 'column1', sortOrder: 'asc' }],
-            onOptionChanged: function(args) {
-                if(args.fullName === 'columns[0].sortOrder') {
-                    dataGrid.option('columns[0].sortOrder', 'asc');
-                }
-            }
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.columnOption(0, 'sortOrder', 'desc');
-
-        // assert
-        assert.strictEqual(dataGrid.columnOption(0, 'sortOrder'), 'asc', 'sortOrder internal state');
-        assert.strictEqual(dataGrid.option('columns[0].sortOrder'), 'asc', 'sortOrder option value');
-    });
-
     // T688721, T694661
     QUnit.test('column width as string should works correctly', function(assert) {
-    // act
+        // act
         const dataGrid = $('#dataGrid').dxDataGrid({
             width: 1000,
             loadingTimeout: undefined,
@@ -1822,7 +591,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T833605
     QUnit.test('Indexes after option change should be normalized before onOptionChanged callback', function(assert) {
-    // arrange
+        // arrange
         let onOptionChangedCallCount = 0;
         const grid = $('#dataGrid').dxDataGrid({
             loadingTimeout: undefined,
@@ -1836,7 +605,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
                 dataField: 'field3'
             }],
             onOptionChanged: function(e) {
-            // act
+                // act
                 onOptionChangedCallCount++;
 
                 // assert
@@ -1856,415 +625,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(onOptionChangedCallCount, 1, 'onOptionChanged call count');
     });
 
-    function isColumnHidden($container, index) {
-        const $colsHeadersView = $container.find('.dx-datagrid-headers col');
-        const $colsRowsView = $container.find('.dx-datagrid-headers col');
-        const headersColWidth = $colsHeadersView.get(index).style.width;
-        const rowsViewWidth = $colsRowsView.get(index).style.width;
-
-        return (headersColWidth === '0.0001px' || headersColWidth === '0px') && (rowsViewWidth === '0.0001px' || rowsViewWidth === '0px');
-    }
-
-    QUnit.test('Columns hiding - columnHidingEnabled is true', function(assert) {
-    // arrange
-        $('#container').width(200);
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnHidingEnabled: true,
-            dataSource: [{ firstName: 'Blablablablablablablablablabla', lastName: 'Psy' }],
-            columns: ['firstName', 'lastName']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-        const adaptiveColumnsController = instance.getController('adaptiveColumns');
-        let $visibleColumns;
-
-        this.clock.tick();
-        $visibleColumns = $(instance.$element().find('.dx-header-row td'));
-
-        // act
-        assert.equal($visibleColumns.length, 3, 'only 1 column is visible');
-        assert.ok(!isColumnHidden(dataGrid, 0), 'first column is shown');
-        assert.ok(isColumnHidden(dataGrid, 1), 'second column is hidden');
-        assert.ok(!isColumnHidden(dataGrid, 2), 'adaptive column is shown');
-        assert.equal($visibleColumns.eq(0).text(), 'First Name', 'it is \'firstName\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns()[0].dataField, 'lastName', '\'lastName\' column is hidden');
-
-        $('#container').width(450);
-        instance.updateDimensions();
-        this.clock.tick();
-
-        $visibleColumns = $(instance.$element().find('.dx-header-row td'));
-
-        // assert
-        assert.equal($visibleColumns.length, 3, '2 columns are visible');
-        assert.ok(!isColumnHidden(dataGrid, 0), 'first column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 1), 'second column is shown');
-        assert.ok(isColumnHidden(dataGrid, 2), 'adaptive column is hidden');
-        assert.equal($visibleColumns.eq(0).text(), 'First Name', 'First is \'firstName\' column');
-        assert.equal($visibleColumns.eq(1).text(), 'Last Name', 'Second is \'lastName\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns().length, 0, 'There is no hidden columns');
-        assert.equal(adaptiveColumnsController.getHidingColumnsQueue().length, 2, 'There is 2 columns in hiding queue');
-    });
-
-    QUnit.test('Columns hiding - hidingPriority', function(assert) {
-    // arrange
-        $('#container').width(200);
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{ firstName: 'Blablablablablablablablablabla', lastName: 'Psy' }],
-            columns: [{ dataField: 'firstName', hidingPriority: 0 }, { dataField: 'lastName', hidingPriority: 1 }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-        const adaptiveColumnsController = instance.getController('adaptiveColumns');
-        let $visibleColumns;
-
-        this.clock.tick();
-        $visibleColumns = $(instance.$element().find('.dx-header-row td'));
-        const $hiddenColumn = $('.dx-datagrid-hidden-column').eq(0);
-
-        // act
-        assert.ok(isColumnHidden(dataGrid, 0), 'first column is hidden');
-        assert.ok(!isColumnHidden(dataGrid, 1), 'second column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 2), 'adaptive column is shown');
-        assert.equal($visibleColumns.length, 3, 'only 1 column is visible');
-        assert.equal($visibleColumns.eq(1).text(), 'Last Name', 'it is \'lastName\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns()[0].dataField, 'firstName', '\'firstName\' column is hidden');
-        // T824145
-        if(browser.msie || browser.chrome) {
-            assert.equal(parseInt($hiddenColumn.css('border-right-width')), 0, 'no right border');
-            assert.equal(parseInt($hiddenColumn.css('border-left-width')), 0, 'no left border');
-        }
-
-        $('#container').width(450);
-        instance.updateDimensions();
-        this.clock.tick();
-        $visibleColumns = $(instance.$element().find('.dx-header-row td'));
-
-        // assert
-        assert.ok(!isColumnHidden(dataGrid, 0), 'first column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 1), 'second column is shown');
-        assert.ok(isColumnHidden(dataGrid, 2), 'adaptive column is hidden');
-        assert.equal($visibleColumns.length, 3, '2 columns are visible');
-        assert.equal($visibleColumns.eq(0).text(), 'First Name', 'First is \'firstName\' column');
-        assert.equal($visibleColumns.eq(1).text(), 'Last Name', 'Second is \'lastName\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns().length, 0, 'There is no hidden columns');
-        assert.equal(adaptiveColumnsController.getHidingColumnsQueue().length, 2, 'There is 2 columns in hiding queue');
-    });
-
-    QUnit.test('Columns hiding - grouping with hidingPriority', function(assert) {
-    // arrange
-        $('#container').width(600);
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{ firstName: 'Blablabla', lastName: 'Psy', age: 40 }],
-            columns: [{ dataField: 'firstName', hidingPriority: 0, groupIndex: 0 }, { dataField: 'lastName', hidingPriority: 1 }, { dataField: 'age', hidingPriority: 2 }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-        const adaptiveColumnsController = instance.getController('adaptiveColumns');
-        let $visibleColumns;
-
-        this.clock.tick();
-
-        $visibleColumns = $(instance.$element().find('.dx-header-row td:not(.dx-datagrid-group-space)'));
-
-        // act
-        assert.equal($visibleColumns.length, 3, '2 column are visible');
-        assert.equal($visibleColumns.eq(0).text(), 'Last Name', 'first is \'lastName\' column');
-        assert.equal($visibleColumns.eq(1).text(), 'Age', 'second is \'lastName\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns().length, 0, 'There no hidden columns');
-
-        $('#container').width(150);
-        instance.updateDimensions();
-        this.clock.tick();
-        $visibleColumns = $(instance.$element().find('.dx-header-row td:not(.dx-datagrid-group-space)'));
-
-        // assert
-        assert.ok(!isColumnHidden(dataGrid, 0), 'first column is shown');
-        assert.ok(isColumnHidden(dataGrid, 1), 'second column is hidden');
-        assert.ok(!isColumnHidden(dataGrid, 2), 'adaptive column is shown');
-        assert.equal($visibleColumns.length, 3, '1 column is visible');
-        assert.equal($visibleColumns.eq(1).text(), 'Age', 'it is \'age\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns().length, 1, 'There is 1 hidden columns');
-        assert.equal(adaptiveColumnsController.getHiddenColumns()[0].dataField, 'lastName', '\'lastName\' column is hidden');
-    });
-
-    QUnit.test('Columns hiding - column without priority must stay (hidingPriority)', function(assert) {
-    // arrange
-        $('#container').width(80);
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{ firstName: 'Blablablablablablablablablabla', lastName: 'Psy van Dyk', age: 40, country: 'India' }],
-            columns: [{ dataField: 'firstName', hidingPriority: 0 }, { dataField: 'lastName', hidingPriority: 1 }, 'age', 'country']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-        const adaptiveColumnsController = instance.getController('adaptiveColumns');
-        let $visibleColumns;
-
-        this.clock.tick();
-
-        $visibleColumns = $(instance.$element().find('.dx-header-row td'));
-
-        // act
-        assert.ok(isColumnHidden(dataGrid, 0), 'first column is hidden');
-        assert.ok(isColumnHidden(dataGrid, 1), 'second column is hidden');
-        assert.ok(!isColumnHidden(dataGrid, 2), 'third column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 3), 'fourth column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 4), 'adaptive column is shown');
-        assert.equal($visibleColumns.length, 5, 'only 2 columns are visible');
-        assert.equal($visibleColumns.eq(2).text(), 'Age', 'First is \'age\' column');
-        assert.equal($visibleColumns.eq(3).text(), 'Country', 'Second is \'country\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns()[0].dataField, 'firstName', '\'firstName\' column is hidden');
-        assert.equal(adaptiveColumnsController.getHiddenColumns()[1].dataField, 'lastName', '\'lastName\' column is hidden');
-        assert.equal(adaptiveColumnsController.getHidingColumnsQueue().length, 2, 'There is no columns in hiding queue');
-
-        $('#container').width(900);
-        instance.updateDimensions();
-
-        this.clock.tick();
-
-        $visibleColumns = $(instance.$element().find('.dx-header-row td'));
-
-        // assert
-        assert.ok(!isColumnHidden(dataGrid, 0), 'first column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 1), 'second column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 2), 'third column is shown');
-        assert.ok(!isColumnHidden(dataGrid, 3), 'fourth column is shown');
-        assert.ok(isColumnHidden(dataGrid, 4), 'adaptive column is hidden');
-        assert.equal($visibleColumns.length, 5, '4 columns are visible');
-        assert.equal($visibleColumns.eq(0).text(), 'First Name', 'First is \'firstName\' column');
-        assert.equal($visibleColumns.eq(1).text(), 'Last Name', 'Second is \'lastName\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns().length, 0, 'There is no hidden columns');
-        assert.equal(adaptiveColumnsController.getHidingColumnsQueue().length, 2, 'There is 2 columns in hiding queue');
-    });
-
-    // T745930
-    QUnit.test('Native scrollbars should not be visible if columns are not hidden by hidingPriority', function(assert) {
-    // arrange, act
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 1100,
-            loadingTimeout: undefined,
-            dataSource: [{
-                OrderNumber: 35703,
-                Employee: 'Harv Mudd'
-            }],
-            columnAutoWidth: true,
-            scrolling: { useNative: true },
-            columns: [{
-                dataField: 'OrderNumber',
-                hidingPriority: 0,
-                width: 130
-            },
-            'Employee']
-        }).dxDataGrid('instance');
-
-        assert.strictEqual(dataGrid.getView('rowsView').getScrollbarWidth(true), 0, 'Horizontal scrollbar is hidden');
-        assert.strictEqual(dataGrid.getView('rowsView').getScrollbarWidth(false), 0, 'Vertical scrollbar is hidden');
-    });
-
-    // TODO jsdmitry: wait fix T381435
-    QUnit.skip('Columns hiding - do not hide fixed columns', function(assert) {
-    // arrange
-        $('#container').width(150);
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnHidingEnabled: true,
-            dataSource: [{ firstName: 'Blablablablablablablablablabla', lastName: 'Psy', age: 40 }],
-            columns: [{ dataField: 'firstName', fixed: true, fixedPosition: 'left' }, 'lastName', 'age']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-        const adaptiveColumnsController = instance.getController('adaptiveColumns');
-        let $cells;
-
-        this.clock.tick();
-        $cells = $(instance.$element().find('.dx-header-row').first().find('td'));
-
-        // act
-        assert.equal($cells.length, 3, 'columns count');
-        assert.equal($cells.eq(0).text(), 'First Name', 'First is \'firstName\' column');
-        assert.equal($cells.eq(1).text(), 'Age', 'Second is \'firstName\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns()[0].dataField, 'lastName', '\'lastName\' column is hidden');
-        assert.equal(adaptiveColumnsController.getHiddenColumns().length, 1, 'Only one column is hidden');
-        assert.equal(adaptiveColumnsController.getHidingColumnsQueue().length, 0, 'There is no columns in hiding queue');
-
-        $('#container').width(800);
-        instance.updateDimensions();
-        this.clock.tick();
-        $cells = $(instance.$element().find('.dx-header-row').first().find('td'));
-        const $unfixedColumns = $(instance.$element().find('.dx-header-row').last().find('td'));
-
-        // assert
-        assert.equal($cells.length, 3, '3 columns are visible');
-        assert.equal($cells.eq(0).text(), 'First Name', 'First is \'firstName\' column');
-        assert.equal($unfixedColumns.eq(1).text(), 'Last Name', 'Second is \'lastName\' column');
-        assert.equal($cells.eq(2).text(), 'Age', 'Third is \'age\' column');
-        assert.equal(adaptiveColumnsController.getHiddenColumns().length, 0, 'There is no hidden columns');
-        assert.equal(adaptiveColumnsController.getHidingColumnsQueue().length, 1, 'There is 1 column in hiding queue');
-    });
-
-    QUnit.test('Form item of adaptive detail row is rendered with the underscore template', function(assert) {
-    // arrange
-        $('#container').width(200);
-
-        const data = [{ firstName: 'Blablablablablablablablablabla', lastName: 'Psy' }];
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnHidingEnabled: true,
-            dataSource: data,
-            columns: ['firstName', { dataField: 'lastName', cellTemplate: $('#scriptTestTemplate1') }]
-        });
-        const instance = $dataGrid.dxDataGrid('instance');
-
-        // act
-        instance.expandAdaptiveDetailRow(data[0]);
-
-        // assert
-        assert.equal($dataGrid.find('.dx-adaptive-detail-row .dx-form').length, 1, 'adaptive detail form is opened');
-        assert.equal($dataGrid.find('.dx-form #template1').text(), 'Template1', 'the underscore template is rendered correctly');
-
-        instance.collapseAdaptiveDetailRow(data[0]);
-    });
-
-    QUnit.test('Get correct column and column index in the onCellHoverChanged event when event is occurred for form\'s item', function(assert) {
-    // arrange
-        $('#container').width(200);
-
-        const dataSource = [{ firstName: 'Blablablablablablablablablabla', lastName: 'Psy' }];
-        const eventArgs = [];
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnHidingEnabled: true,
-            dataSource: dataSource,
-            columns: ['firstName', 'lastName'],
-            onCellHoverChanged: function(e) {
-                assert.equal(typeUtils.isRenderer(e.cellElement), !!config().useJQuery, 'cellElement is correct');
-                eventArgs.push({
-                    column: e.column,
-                    columnIndex: e.columnIndex
-                });
-            }
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        instance.expandAdaptiveDetailRow(dataSource[0]);
-        this.clock.tick();
-        dataGrid.find('.dx-field-item-content').first().trigger('mouseover');
-        dataGrid.find('.dx-field-item-content').first().trigger('mouseout');
-
-        // assert
-        assert.equal(eventArgs.length, 2, 'count of eventArgs');
-        assert.equal(eventArgs[0].column.dataField, 'lastName', 'dataField of column (mouseover)');
-        assert.equal(eventArgs[0].columnIndex, 1, 'index of column (mouseover)');
-        assert.equal(eventArgs[1].column.dataField, 'lastName', 'dataField of column (mouseover)');
-        assert.equal(eventArgs[1].columnIndex, 1, 'index of column (mouseover)');
-    });
-
-    QUnit.test('Get correct column and column index in the onCellClick event when event is occurred for form\'s item', function(assert) {
-    // arrange
-        $('#container').width(200);
-
-        const dataSource = [{ firstName: 'Blablablablablablablablablabla', lastName: 'Psy' }];
-        let column;
-        let columnIndex;
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnHidingEnabled: true,
-            dataSource: dataSource,
-            columns: ['firstName', 'lastName'],
-            onCellClick: function(e) {
-                assert.equal(typeUtils.isRenderer(e.cellElement), !!config().useJQuery, 'cellElement is correct');
-                column = e.column;
-                columnIndex = e.columnIndex;
-            }
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        instance.expandAdaptiveDetailRow(dataSource[0]);
-        this.clock.tick();
-        dataGrid.find('.dx-field-item-content').trigger('dxclick');
-
-        // assert
-        assert.equal(column.dataField, 'lastName', 'dataField of column');
-        assert.equal(columnIndex, 1, 'index of column');
-    });
-
-    QUnit.test('DataGrid - A fixed rows should be synchronized after change column width if wordWrapEnabled and height are set (T830739)', function(assert) {
-    // arrange
-        const rowsViewWrapper = dataGridWrapper.rowsView;
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            width: 400,
-            height: 150,
-            dataSource: [
-                { id: 0, c0: 'Test00 resize', c1: 'Test10' },
-                { id: 1, c0: 'Test01 resize', c1: 'Test11' }
-            ],
-            allowColumnResizing: true,
-            rowAlternationEnabled: true,
-            wordWrapEnabled: true,
-            columns: [
-                { dataField: 'id', width: 100, fixed: true },
-                'c0',
-                'c1'
-            ]
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.columnOption('c0', 'width', 60);
-
-        // arrange, assert
-        let $fixedRow = rowsViewWrapper.getFixedDataRow(0).getElement();
-        let $dataRow = rowsViewWrapper.getDataRow(0).getElement();
-        assert.deepEqual($fixedRow.position(), $dataRow.position(), '1st row position');
-        assert.equal($fixedRow.height(), $dataRow.height(), '1st row height');
-
-        // arrange, assert
-        $fixedRow = rowsViewWrapper.getFixedDataRow(1).getElement();
-        $dataRow = rowsViewWrapper.getDataRow(1).getElement();
-        assert.deepEqual($fixedRow.position(), $dataRow.position(), '2nd row position');
-        assert.equal($fixedRow.height(), $dataRow.height(), '2nd row height');
-    });
-
-    QUnit.test('Column widths should be correct after resize column to show scroll if fixed column is exists', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 400,
-            loadingTimeout: undefined,
-            dataSource: [{}],
-            columns: [
-                { dataField: 'field1', width: 100 },
-                { dataField: 'field2', width: 100 },
-                { dataField: 'field3', width: 100, fixed: true, fixedPosition: 'right' }
-            ]
-        });
-        const instance = $dataGrid.dxDataGrid('instance');
-
-        // act
-        instance.columnOption(0, 'width', 400);
-        instance.columnOption(0, 'visibleWidth', 400);
-        instance.updateDimensions();
-
-        // assert
-        const $colGroups = $dataGrid.find('.dx-datagrid-rowsview colgroup');
-        assert.strictEqual($colGroups.length, 2);
-
-        assert.strictEqual($colGroups.eq(0).children().get(0).style.width, '400px');
-        assert.strictEqual($colGroups.eq(0).children().get(1).style.width, '100px');
-        assert.strictEqual($colGroups.eq(0).children().get(2).style.width, '100px');
-
-        assert.strictEqual($colGroups.eq(1).children().get(0).style.width, 'auto');
-        assert.strictEqual($colGroups.eq(1).children().get(1).style.width, 'auto');
-        assert.strictEqual($colGroups.eq(1).children().get(2).style.width, '100px');
-    });
-
     // T659247
     QUnit.test('Column widths for header cells should be correctly if columnAutoWidth is enabled and banded columns are used', function(assert) {
-    // arrange
+        // arrange
         const $dataGrid = $('#dataGrid').dxDataGrid({
             width: 400,
             columnAutoWidth: true,
@@ -2302,33 +665,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.strictEqual(getHeaderCellWidth(1, 0), '70px');
         assert.strictEqual(getHeaderCellWidth(1, 1), '80px');
         assert.strictEqual(getHeaderCellWidth(1, 2), '', 'last column has no width');
-    });
-
-    QUnit.test('Last cell should have correct width after resize column to hide scroll if fixed column is exists and columnAutoWidth is enabled', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 400,
-            loadingTimeout: undefined,
-            columnAutoWidth: true,
-            dataSource: [{}],
-            columns: [
-                { dataField: 'field1', width: 250 },
-                { dataField: 'field2', width: 100 },
-                { dataField: 'field3', width: 100, fixed: true, fixedPosition: 'right' }
-            ]
-        });
-        const instance = $dataGrid.dxDataGrid('instance');
-
-        // act
-        instance.columnOption(0, 'width', 100);
-        instance.columnOption(0, 'visibleWidth', 100);
-        instance.updateDimensions();
-
-        // assert
-        const $rows = $(instance.getRowElement(0));
-
-        assert.strictEqual($rows.eq(0).children().last().get(0).offsetWidth, 100);
-        assert.strictEqual($rows.eq(1).children().last().get(0).offsetWidth, 100);
     });
 
     QUnit.test('Initialize grid with any columns when columnMinWidth option is assigned', function(assert) {
@@ -2426,7 +762,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('Apply minWidth when columns have \'auto\' width but the last column hasn\'t width', function(assert) {
-    // arrange
+        // arrange
         $('#container').width(200);
 
         $('#dataGrid').dxDataGrid({
@@ -2461,27 +797,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         }
     });
 
-    QUnit.test('Horizontal scrollbar is not displayed when columns width has float value', function(assert) {
-    // arrange, act
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 1000,
-            selection: { mode: 'multiple', showCheckBoxesMode: 'always' },
-            dataSource: [],
-            columns: [
-                { dataField: 'firstName' },
-                { dataField: 'lastName' },
-                { dataField: 'room' },
-                { dataField: 'birthDay' }
-            ]
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-
-        // assert
-        assert.strictEqual(dataGrid.getView('rowsView').getScrollbarWidth(true), 0);
-    });
-
     QUnit.test('Disable rows hover', function(assert) {
-    // arrange
+        // arrange
         const $dataGrid = $('#dataGrid').dxDataGrid({
             dataSource: [],
             columns: [
@@ -2555,185 +872,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.ok($firstRow.hasClass(DX_STATE_HOVER_CLASS), 'row has hover class');
     });
 
-    QUnit.test('DataGrid - navigateToRow method should work if rowRenderingMode is \'virtual\' and paging is disabled (T820359)', function(assert) {
-    // arrange
-        const data = [];
-        const navigateRowKey = 25;
-
-        for(let i = 0; i < 30; i++) {
-            data.push({ id: i + 1 });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 200,
-            keyExpr: 'id',
-            dataSource: data,
-            paging: {
-                enabled: false
-            },
-            scrolling: {
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            loadingTimeout: undefined
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.navigateToRow(navigateRowKey);
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows().filter(row => row.key === navigateRowKey).length, 1, 'navigated row is visible');
-    });
-
-    ['standard', 'infinite', 'virtual'].forEach((scrollingMode) => {
-        ['standard', 'virtual'].forEach((rowRenderingMode) => {
-            QUnit.test(`Grid should not scroll top after navigate to row on the same page if scrolling.mode is ${scrollingMode} and scrolling.rowRenderingMode is ${rowRenderingMode} (T836612)`, function(assert) {
-            // arrange
-                const data = [];
-
-                for(let i = 0; i < 100; ++i) {
-                    data.push({ id: i });
-                }
-
-                const dataGrid = $('#dataGrid').dxDataGrid({
-                    height: 200,
-                    keyExpr: 'id',
-                    dataSource: data,
-                    scrolling: {
-                        mode: 'virtual',
-                        rowRenderingMode,
-                        useNative: false
-                    },
-                    loadingTimeout: undefined
-                }).dxDataGrid('instance');
-
-                // act
-                dataGrid.navigateToRow(35);
-                dataGrid.navigateToRow(20);
-
-                // assert
-                assert.equal(dataGrid.pageIndex(), 1, 'Page index');
-            });
-        });
-
-        QUnit.test(`Test columnsController.getColumnIndexOffset where scrollingMode: ${scrollingMode} and columnRenderingMode: virtual`, function(assert) {
-            // arrange
-            const data = [];
-            const columns = [];
-
-            for(let i = 0; i < 2; ++i) {
-                const item = {};
-                for(let j = 0; j < 100; ++j) {
-                    const fieldName = `field${j}`;
-                    item[fieldName] = `${i}-${j}`;
-                    if(columns.length !== 100) {
-                        columns.push(fieldName);
-                    }
-                }
-                data.push(item);
-            }
-
-            const dataGrid = $('#dataGrid').dxDataGrid({
-                width: 270,
-                columns: columns,
-                dataSource: data,
-                columnWidth: 90,
-                scrolling: {
-                    mode: scrollingMode,
-                    columnRenderingMode: 'virtual',
-                    useNative: true
-                },
-                loadingTimeout: undefined
-            }).dxDataGrid('instance');
-
-            const columnController = dataGrid.getController('columns');
-
-            // assert
-            assert.equal(columnController.getColumnIndexOffset(), 0, 'Column index offset is 0');
-
-            // act
-            const scrollable = dataGrid.getScrollable();
-            scrollable.scrollTo({ x: 900 });
-            $(scrollable._container()).trigger('scroll');
-            this.clock.tick();
-
-            // assert
-            assert.equal(columnController.getColumnIndexOffset(), 9, 'Column index offset');
-        });
-    });
-
-    QUnit.test('The navigateToRow method should not affect horizontal scrolling', function(assert) {
-    // arrange
-        const data = [
-            { team: 'internal', name: 'Alex', age: 30 },
-            { team: 'internal', name: 'Bob', age: 29 },
-            { team: 'internal0', name: 'Ben', age: 24 },
-            { team: 'internal0', name: 'Dan', age: 23 },
-            { team: 'public', name: 'Alice', age: 19 },
-            { team: 'public', name: 'Zeb', age: 18 }
-        ];
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 80,
-            width: 200,
-            dataSource: data,
-            keyExpr: 'name',
-            paging: { pageSize: 2 },
-            pager: { visible: false },
-            columnResizingMode: 'widget',
-            columns: [
-                { dataField: 'team', width: 150 },
-                { dataField: 'name', width: 150 },
-                { dataField: 'age', width: 150 },
-            ]
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.navigateToRow('Zeb');
-        this.clock.tick();
-
-        const rowsView = dataGrid.getView('rowsView');
-
-        // assert
-        assert.equal(dataGrid.pageIndex(), 2, 'Page index');
-        assert.ok(dataGridWrapper.rowsView.isRowVisible(1, 1), 'Navigation row is visible');
-        assert.equal(rowsView.getScrollable().scrollLeft(), 0, 'Scroll left');
-    });
-
-    QUnit.test('Test navigateToRow method if virtual scrolling', function(assert) {
-    // arrange
-        const data = [
-            { team: 'internal', name: 'Alex', age: 30 },
-            { team: 'internal', name: 'Bob', age: 29 },
-            { team: 'internal0', name: 'Ben', age: 24 },
-            { team: 'internal0', name: 'Dan', age: 23 },
-            { team: 'public', name: 'Alice', age: 19 },
-            { team: 'public', name: 'Zeb', age: 18 }
-        ];
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 80,
-            dataSource: data,
-            keyExpr: 'name',
-            paging: { pageSize: 2 },
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            }
-        }).dxDataGrid('instance');
-        const keyboardController = dataGrid.getController('keyboardNavigation');
-
-        // act
-        dataGrid.navigateToRow('Zeb');
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.pageIndex(), 2, 'Page index');
-        assert.equal(keyboardController.getVisibleRowIndex(), -1, 'Visible row index');
-        assert.ok(dataGridWrapper.rowsView.isRowVisible(5, 1), 'Navigation row is visible');
-    });
-
     QUnit.test('Test navigateToRow method if paging', function(assert) {
-    // arrange
+        // arrange
         const data = [
             { team: 'internal', name: 'Alex', age: 30 },
             { team: 'internal', name: 'Bob', age: 29 },
@@ -2759,128 +899,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(dataGrid.pageIndex(), 2, 'Page index');
         assert.equal(keyboardController.getVisibleRowIndex(), -1, 'Visible row index');
         assert.ok(dataGridWrapper.rowsView.isRowVisible(1, 1), 'Navigation row is visible');
-    });
-
-    QUnit.test('DataGrid should not scroll back to the focused row after pageIndex changed in virtual scrolling', function(assert) {
-    // arrange
-        const data = [];
-
-        for(let i = 0; i < 100; ++i) {
-            data.push({ id: i, c0: 'c0_' + i, c1: 'c1_' + i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 300,
-            keyExpr: 'id',
-            dataSource: data,
-            focusedRowEnabled: true,
-            focusedRowIndex: 3,
-            paging: { pageSize: 5 },
-            scrolling: {
-                mode: 'virtual'
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        dataGrid.getScrollable().scrollTo({ y: 1000 });
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.getScrollable().scrollTop(), 1000, 'scrollTop');
-    });
-
-    // T859208
-    QUnit.test('Sort indicators should not be rendered if grouping is applied and showWhenGrouped = true (single sorting)', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: [{ }],
-            sorting: {
-                mode: 'single'
-            },
-            columns: [{
-                dataField: 'field1'
-            }, {
-                dataField: 'field3',
-                sortOrder: 'desc',
-                showWhenGrouped: true
-            }],
-            groupPanel: {
-                visible: true
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        dataGrid.columnOption(1, 'groupIndex', 0);
-        this.clock.tick();
-
-        // assert
-        const $dataGrid = $(dataGrid.$element());
-        const $headers = $dataGrid.find('.dx-header-row > td');
-        const $groupPanelItem = $dataGrid.find('.dx-group-panel-item');
-
-        assert.notOk($headers.eq(2).find('.dx-sort').length, 'no element with dx-sort class');
-        assert.notOk($headers.eq(2).find('.dx-sort-indicator').length, 'no element with dx-sort-indicator class');
-
-        assert.ok($groupPanelItem.find('.dx-sort').length, 'group item sort indicator');
-        assert.notOk($groupPanelItem.find('.dx-sort-indicator').length, 'no element with dx-sort-indicator class');
-    });
-
-    function groupingWithSortingTest(that, assert, sortIndexes) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: [{ }],
-            sorting: {
-                mode: 'multiple'
-            },
-            columns: [{
-                dataField: 'field1',
-                sortOrder: 'desc',
-                sortIndex: sortIndexes[0]
-            }, {
-                dataField: 'field3',
-                sortOrder: 'desc',
-                sortIndex: sortIndexes[1],
-                showWhenGrouped: true
-            }],
-            groupPanel: {
-                visible: true
-            }
-        }).dxDataGrid('instance');
-
-        that.clock.tick();
-
-        // act
-        dataGrid.columnOption(1, 'groupIndex', 0);
-        that.clock.tick();
-
-        // assert
-        const $dataGrid = $(dataGrid.$element());
-        const $headers = $dataGrid.find('.dx-header-row > td');
-        const $groupPanelItem = $dataGrid.find('.dx-group-panel-item');
-
-        assert.notOk($headers.eq(2).find('.dx-sort').length, 'no element with dx-sort class');
-        assert.notOk($headers.eq(2).find('.dx-sort-indicator').length, 'no element with dx-sort-indicator class');
-        assert.notOk($headers.eq(2).find('.dx-sort-index-indicator').length, 'no element with dx-sort-index-indicator class');
-
-        assert.ok($groupPanelItem.find('.dx-sort').length, 'group item sort indicator');
-        assert.notOk($groupPanelItem.find('.dx-sort-indicator').length, 'no element with dx-sort-indicator class');
-        assert.notOk($groupPanelItem.find('.dx-sort-index-indicator').length, 'no element with dx-sort-index-indicator class');
-
-        assert.equal($headers.eq(1).find('.dx-sort-index-icon').text(), `${sortIndexes[0] + 1}`, 'has sort index icon');
-        assert.notOk($headers.eq(2).find('.dx-sort-index-icon').length, 'no sort index icon');
-        assert.notOk($groupPanelItem.find('.dx-sort-index-icon').length, 'no sort index icon');
-
-        dataGrid.dispose();
-    }
-
-    // T859208
-    QUnit.test('Sort indicators should not be rendered if grouping is applied and showWhenGrouped = true (multiple sorting)', function(assert) {
-        groupingWithSortingTest(this, assert, [0, 1]);
-        groupingWithSortingTest(this, assert, [1, 0]);
     });
 
     QUnit.test('Enable rows hover via option method', function(assert) {
@@ -2912,7 +930,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T113644
     QUnit.test('resize on change window size', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             width: 1000,
             loadingTimeout: undefined,
@@ -2935,7 +953,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('resize on change width', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [],
@@ -2957,7 +975,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('resize on change height from fixed to auto', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             height: 400,
             loadingTimeout: undefined,
@@ -2980,7 +998,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('resize on change height from auto to fixed', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [{}],
@@ -3001,39 +1019,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(Math.round($dataGrid.find('.dx-datagrid').height()), 400);
     });
 
-    QUnit.test('resize column event when columnAutoWidth enabled', function(assert) {
-    // arrange, act
-        const resizedWidths = [];
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 1000,
-            loadingTimeout: undefined,
-            columnAutoWidth: true,
-            dataSource: [{}],
-            columns: [
-                { dataField: 'field1' },
-                { dataField: 'field2', resized: function(width) {
-                    resizedWidths.push(width);
-                } },
-                { dataField: 'field3' },
-                { dataField: 'field4' }
-            ]
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-
-
-        // assert
-        assert.equal(resizedWidths.length, 1);
-        assert.ok(Math.abs(resizedWidths[0] - 250) <= 1, 'width applied');
-
-        // act
-        dataGrid.resize();
-
-        // assert
-        assert.equal(resizedWidths.length, 3);
-        assert.strictEqual(resizedWidths[1], undefined, 'column width reset for bestFit calculation');
-        assert.ok(Math.abs(resizedWidths[2] - 250) <= 1, 'width applied');
-    });
-
     QUnit.test('height 100% when this style apply as auto', function(assert) {
         $('#qunit-fixture').addClass('qunit-fixture-auto-height');
         // arrange, act
@@ -3046,32 +1031,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         $('#qunit-fixture').removeClass('qunit-fixture-auto-height');
     });
 
-    // T222134
-    QUnit.test('height 100% when parent container with fixed height when virtual scrolling enabled', function(assert) {
-    // arrange, act
-
-        const array = [];
-        for(let i = 0; i < 50; i++) {
-            array.push({ author: 'J. D. Salinger', title: 'The Catcher in the Rye', year: 1951 });
-        }
-
-        $('#container').addClass('fixed-height');
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            height: '100%',
-            dataSource: array,
-            pager: { visible: true },
-            scrolling: { mode: 'virtual' }
-        });
-
-        this.clock.tick();
-
-        // assert
-        assert.ok($dataGrid.find('.dx-datagrid-rowsview').height() > 300, 'rowsView has height');
-    });
-
     // T595044
     QUnit.test('aria-rowindex aria-colindex if default pager mode', function(assert) {
-    // arrange, act
+        // arrange, act
         const array = [];
         let rows;
         let i;
@@ -3109,370 +1071,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         }
     });
 
-    QUnit.test('aria-colindex if scrolling.columnRenderingMode: virtual', function(assert) {
-        // arrange, act
-        let $cell;
-        let colIndex;
-        const data = [{ }];
-
-        for(let i = 0; i < 100; i++) {
-            data[0][`field_${i}`] = `0-${i + 1}`;
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 200,
-            dataSource: data,
-            columnWidth: 100,
-            scrolling: {
-                columnRenderingMode: 'virtual',
-                useNative: false
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick(300);
-
-        const columnPageSize = dataGrid.option('scrolling.columnPageSize');
-        for(let i = 0; i < columnPageSize; ++i) {
-            $cell = $(dataGrid.getCellElement(0, i));
-
-            colIndex = i + 1;
-
-            // assert
-            assert.equal($cell.attr('aria-colindex'), colIndex, `Data cell aria-colindex == ${colIndex}`);
-            assert.strictEqual($cell.text(), `0-${colIndex}`, `Data cell text == 0-${colIndex}`);
-        }
-
-        dataGrid.getScrollable().scrollTo({ x: 1000 });
-        this.clock.tick();
-
-        // assert
-        $cell = $(dataGrid.getCellElement(0, 0));
-        assert.equal($cell.attr('aria-colindex'), 10, `Virtual cell aria-colindex == ${colIndex}`);
-
-        for(let i = 1; i < columnPageSize + 1; ++i) {
-            $cell = $(dataGrid.getCellElement(0, i));
-
-            colIndex = i + 10;
-
-            // assert
-            assert.equal($cell.attr('aria-colindex'), colIndex, `Data cell aria-colindex == ${colIndex}`);
-            assert.strictEqual($cell.text(), `0-${colIndex}`, `Data cell text == 0-${colIndex}`);
-        }
-
-        $cell = $(dataGrid.getCellElement(0, columnPageSize));
-        assert.equal($cell.attr('aria-colindex'), columnPageSize + 10, `Virtual cell aria-colindex == ${colIndex}`);
-    });
-
-
-    // T595044
-    QUnit.test('aria-rowindex aria-colindex if virtual scrolling', function(assert) {
-    // arrange, act
-        const array = [];
-        let row;
-
-        for(let i = 0; i < 100; i++) {
-            array.push({ author: 'J. D. Salinger', title: 'The Catcher in the Rye', year: 1951 });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 200,
-            dataSource: array,
-            paging: { pageSize: 2 },
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick(300);
-
-        const rowsView = dataGrid._views.rowsView;
-        row = rowsView.element().find('.dx-data-row').eq(0);
-
-        // assert
-        assert.equal(row.attr('aria-rowindex'), 1, 'aria-index is correct');
-
-        rowsView.scrollTo({ y: 3000 });
-
-        this.clock.tick();
-
-        row = rowsView.element().find('.dx-data-row').eq(0);
-        assert.equal(row.attr('aria-rowindex'), 89, 'aria-index is correct after scrolling');
-    });
-
-    QUnit.test('aria-rowindex if virtual row rendering', function(assert) {
-    // arrange, act
-        const array = [];
-        let $row;
-
-        for(let i = 0; i < 100; i++) {
-            array.push({ author: 'J. D. Salinger', title: 'The Catcher in the Rye', year: 1951 });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 200,
-            dataSource: array,
-            paging: { pageSize: 50 },
-            scrolling: {
-                rowRenderingMode: 'virtual',
-                useNative: false
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick(300);
-
-        const rowsView = dataGrid._views.rowsView;
-        $row = rowsView.element().find('.dx-data-row').eq(0);
-
-        // assert
-        assert.equal($row.attr('aria-rowindex'), 1, 'aria-index is correct');
-
-        rowsView.scrollTo({ y: 3000 });
-
-        this.clock.tick();
-
-        $row = rowsView.element().find('.dx-data-row').first();
-        assert.notEqual($row.attr('aria-rowindex'), 1, 'first row is changed');
-
-        $row = rowsView.element().find('.dx-data-row').last();
-        assert.equal($row.attr('aria-rowindex'), 50, 'last row is correct after scrolling');
-    });
-
-    // T595044
-    QUnit.test('aria-colcount aria-rowcount if virtual scrolling', function(assert) {
-    // arrange, act
-        const array = [];
-
-        for(let i = 0; i < 100; i++) {
-            array.push({ ID: i, C0: 'C0_' + i, C1: 'C1_' + i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 200,
-            dataSource: {
-                store: array,
-                group: 'ID'
-            },
-            paging: { pageSize: 2 },
-            scrolling: { mode: 'virtual' }
-        });
-
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.find('.dx-gridbase-container').attr('aria-rowcount'), 200, 'aria-rowcount is correct');
-        assert.equal(dataGrid.find('.dx-gridbase-container').attr('aria-colcount'), 3, 'aria-colcount is correct');
-    });
-
-    QUnit.test('all visible items should be rendered if pageSize is small and virtual scrolling is enabled', function(assert) {
-    // arrange, act
-        const array = [];
-
-        for(let i = 1; i <= 15; i++) {
-            array.push({ id: i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 400,
-            dataSource: array,
-            keyExpr: 'id',
-            onRowPrepared: function(e) {
-                if(e.rowType === 'data') {
-                    $(e.rowElement).css('height', e.key === 1 ? 200 : 50);
-                }
-            },
-            paging: { pageSize: 2 },
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        dataGrid.getScrollable().scrollTo({ y: 300 });
-
-        this.clock.tick(300);
-
-        // assert
-        const visibleRows = dataGrid.getVisibleRows();
-        assert.equal(visibleRows.length, 12, 'visible row count');
-        assert.equal(visibleRows[0].key, 3, 'first visible row key');
-        assert.equal(visibleRows[visibleRows.length - 1].key, 14, 'last visible row key');
-    });
-
-    // T805413
-    QUnit.test('DataGrid should not load same page multiple times when scroll position is changed', function(assert) {
-    // arrange, act
-        const loadedPages = [];
-        const data = [];
-
-        for(let i = 0; i < 10; i++) {
-            data.push({ field: 'text' });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 100,
-            remoteOperations: true,
-            dataSource: {
-                load: function(loadOptions) {
-                    loadedPages.push(loadOptions.skip / 10);
-
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        d.resolve({ data: data, totalCount: 100000 });
-                    }, 25);
-
-                    return d;
-                }
-            },
-            paging: { pageSize: 10 },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            columns: ['field']
-        }).dxDataGrid('instance');
-
-        this.clock.tick(600);
-
-        const scrollable = dataGrid.getScrollable();
-
-        // act
-        for(let position = 500; position < 1200; position += 100) {
-            scrollable.scrollTo({ y: position });
-            this.clock.tick(50);
-        }
-
-        this.clock.tick(250);
-
-        // assert
-        assert.deepEqual(loadedPages, [0, 1, 2, 3, 4], 'all pages are unique');
-    });
-
-    QUnit.test('DataGrid should expand the row in the onContentReady method in virtual scroll mode (T826930)', function(assert) {
-    // arrange
-        const rowsView = dataGridWrapper.rowsView;
-        $('#dataGrid').dxDataGrid({
-            dataSource: [{ id: 1, name: 'Sahra' }, { id: 1, name: 'John' }],
-            grouping: {
-                autoExpandAll: false
-            },
-            onContentReady: function(e) {
-            // act
-                e.component.expandRow([1]);
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            columns: [{
-                dataField: 'id',
-                groupIndex: 0
-            }, 'name']
-        }).dxDataGrid('instance');
-        this.clock.tick();
-
-        // assert
-        assert.equal(rowsView.getDataRows().getElement().length, 2, 'row is expanded');
-    });
-
-    QUnit.test('virtual columns', function(assert) {
-    // arrange, act
-        const columns = [];
-
-        for(let i = 1; i <= 20; i++) {
-            columns.push('field' + i);
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 200,
-            columnWidth: 50,
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            columns: columns,
-            scrolling: {
-                columnRenderingMode: 'virtual'
-            }
-        }).dxDataGrid('instance');
-
-        // assert
-        assert.equal(dataGrid.$element().find('.dx-data-row').children().length, 6, 'visible column count');
-    });
-
-    // T706583
-    QUnit.test('grouping if columnRenderingMode is virtual, filterRow is visible and datetime column exists', function(assert) {
-    // arrange, act
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            scrolling: {
-                columnRenderingMode: 'virtual'
-            },
-            columnWidth: 100,
-            width: 500,
-            filterRow: {
-                visible: true
-            },
-            columns: [{
-                dataField: 'c1',
-                dataType: 'datetime'
-            },
-            'c2', 'c3', 'c4', 'c5', 'c6']
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.columnOption('c2', 'groupIndex', 0);
-
-        // assert
-        assert.equal(dataGrid.getVisibleColumns()[0].type, 'groupExpand', 'grouping is applied');
-    });
-
-    QUnit.test('visible items should be rendered if virtual scrolling and preload are enabled', function(assert) {
-    // arrange, act
-        const array = [];
-
-        for(let i = 1; i <= 15; i++) {
-            array.push({ id: i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 400,
-            dataSource: array,
-            keyExpr: 'id',
-            onRowPrepared: function(e) {
-                if(e.rowType === 'data') {
-                    $(e.rowElement).css('height', e.key === 1 ? 200 : 50);
-                }
-            },
-            paging: { pageSize: 2 },
-            scrolling: {
-                preloadEnabled: true,
-                mode: 'virtual',
-                useNative: false
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        dataGrid.getScrollable().scrollTo({ y: 300 });
-
-        this.clock.tick(300);
-
-        // assert
-        const visibleRows = dataGrid.getVisibleRows();
-        assert.equal(visibleRows.length, 15, 'visible row count');
-        assert.equal(visibleRows[0].key, 1, 'first visible row key');
-        assert.equal(visibleRows[visibleRows.length - 1].key, 15, 'last visible row key');
-    });
-
     QUnit.test('DataGrid should apply columns that are dynamically added to a band (T815945)', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = $('#dataGrid').dxDataGrid({
             dataSource: [{ name: 'Alex', age: 22 }, { name: 'Sahra', age: 22 }],
             columns: [{
@@ -3497,137 +1097,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(dataGridWrapper.headers.getHeaderItemTextContent(1, 1), 'Age', 'age is applied');
     });
 
-    QUnit.test('scroll position should not be reseted if virtual scrolling and cell template cause relayout', function(assert) {
-    // arrange
-        const array = [];
-
-        for(let i = 1; i <= 100; i++) {
-            array.push({ id: i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 300,
-            dataSource: array,
-            keyExpr: 'id',
-            paging: { pageSize: 10 },
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            },
-            columns: [{
-                dataField: 'id',
-                cellTemplate: function(container, options) {
-                    $(container).width();
-                    $(container).text(options.text);
-                }
-            }]
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.getView('rowsView')._isScrollByEvent = true;
-        dataGrid.getScrollable().scrollTo({ y: 2000 });
-
-        // assert
-        assert.equal(dataGrid.getScrollable().scrollTop(), 2000, 'scrollTop is not reseted');
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 51, 'first visible row key');
-    });
-
-    QUnit.test('scroll position should not be reseted after refresh if virtual scrolling with legacyRendering', function(assert) {
-    // arrange
-        const array = [];
-
-        for(let i = 1; i <= 100; i++) {
-            array.push({ id: i });
-        }
-
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 300,
-            dataSource: array,
-            keyExpr: 'id',
-            paging: { pageSize: 10 },
-            legacyRendering: true,
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            },
-            columns: [{
-                dataField: 'id'
-            }]
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        dataGrid.getScrollable().scrollTo({ y: 2000 });
-        this.clock.tick();
-        dataGrid.refresh();
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.getScrollable().scrollTop(), 2000, 'scrollTop is not reseted');
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 51, 'first visible row key');
-    });
-
-    // T662900
-    QUnit.test('scroll position should not be changed after partial update via repaintRows', function(assert) {
-    // arrange
-        const array = [];
-
-        for(let i = 1; i <= 10; i++) {
-            array.push({ id: i });
-        }
-
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 100,
-            dataSource: array,
-            keyExpr: 'id',
-            loadingTimeout: undefined
-        }).dxDataGrid('instance');
-
-
-        // act
-        $(dataGrid.getCellElement(0, 0)).trigger(pointerEvents.up);
-        dataGrid.getScrollable().scrollTo({ y: 200 });
-        dataGrid.repaintRows(0);
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.getScrollable().scrollTop(), 200, 'scrollTop is not reseted');
-    });
-
-    // T671942
-    QUnit.test('scroll position should not be changed after scrolling to end if scrolling mode is infinite', function(assert) {
-    // arrange
-        const array = [];
-
-        for(let i = 1; i <= 100; i++) {
-            array.push({ id: i });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 100,
-            dataSource: array,
-            keyExpr: 'id',
-            scrolling: {
-                mode: 'infinite'
-            },
-            loadingTimeout: undefined
-        }).dxDataGrid('instance');
-
-
-        // act
-        $(dataGrid.getCellElement(0, 0)).trigger(pointerEvents.up);
-        dataGrid.getScrollable().scrollTo({ y: 10000 });
-        this.clock.tick();
-        // assert
-        assert.ok(dataGrid.getScrollable().scrollTop() > 0, 'scrollTop is not reseted');
-    });
-
     QUnit.test('height from extern styles', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').addClass('fixed-height').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [],
@@ -3645,7 +1116,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T189228
     QUnit.test('height from extern styles when rendering to detached container', function(assert) {
-    // arrange
+        // arrange
         const $dataGrid = $('<div />').addClass('fixed-height').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [],
@@ -3672,8 +1143,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T347043
     QUnit.test('height from extern styles when rendering to invisible container', function(assert) {
-    // arrange
-    // act
+        // arrange
+        // act
         $('#dataGrid').css({
             height: 400,
             position: 'relative'
@@ -3703,8 +1174,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T380698
     QUnit.test('height from style after updateDimensions when rendering to container with zero content height', function(assert) {
-    // arrange
-    // act
+        // arrange
+        // act
         const dataGrid = $('#dataGrid').css({
             border: '1px solid black',
             height: 2
@@ -3728,7 +1199,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T362517, T734767
     QUnit.test('max-height from styles', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').css('maxHeight', 400).dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
@@ -3755,7 +1226,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T849902
     QUnit.test('max-height as float number from styles', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = $('#dataGrid').css('maxHeight', '100.2px').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
@@ -3770,7 +1241,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T820186
     QUnit.test('width 100% should be applied if container width is zero on render', function(assert) {
-    // arrange
+        // arrange
         $('#dataGrid').parent().width(0);
         $('#dataGrid').dxDataGrid({
             width: '100%',
@@ -3789,37 +1260,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal($('#dataGrid').width(), 300, 'width 100% is applied');
     });
 
-    // T412035
-    QUnit.test('scrollTop position must be kept after updateDimensions when scrolling is native', function(assert) {
-    // arrange, act
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            height: 200,
-            loadingTimeout: undefined,
-            scrolling: {
-                useNative: true
-            },
-            dataSource: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
-            columns: [
-                { dataField: 'field1' },
-                { dataField: 'field2' }
-            ]
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-
-
-        const scrollable = $dataGrid.find('.dx-scrollable').dxScrollable('instance');
-
-
-        // act
-        scrollable.scrollTo({ x: 0, y: 50 });
-        dataGrid.updateDimensions();
-
-        assert.equal(scrollable.scrollTop(), 50, 'scrollTop');
-    });
-
     QUnit.test('height from style after updateDimensions when rendering to container without height', function(assert) {
-    // arrange
-    // act
+        // arrange
+        // act
         const dataGrid = $('#dataGrid').dxDataGrid({
             dataSource: [],
             columns: [
@@ -3836,54 +1279,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
         // assert
         assert.equal($('#dataGrid').find('.dx-datagrid').height(), 300);
-    });
-
-    // T758955
-    QUnit.test('native scrollBars layout should be correct after width change if fixed columns exist and columnAutoWidth is true', function(assert) {
-        if(devices.real().deviceType !== 'desktop') {
-            assert.ok(true, 'test is not actual for mobile devices');
-            return;
-        }
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: [{
-                'CompanyName': 'Super Mart of the West',
-                'Phone': '(800) 555-2797',
-                'Address': '702 SW 8th Street',
-                'Fax': '(800) 555-2171'
-            }],
-            columnAutoWidth: true,
-            loadingTimeout: undefined,
-            height: 300,
-            width: 1000,
-            scrolling: {
-                useNative: true,
-            },
-            columns: [{
-                dataField: 'CompanyName',
-            }, {
-                dataField: 'Phone',
-            }, {
-                dataField: 'Address',
-            }, {
-                dataField: 'Fax',
-                fixed: true,
-                fixedPosition: 'right',
-                width: 50
-            }]
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.option('width', 400);
-
-        // assert
-        if(browser.msie && parseInt(browser.version) > 11) {
-            assert.notEqual($('#dataGrid').find('.dx-datagrid-content-fixed').eq(1).css('margin-right'), '0px', 'margin-right is not zero');
-            assert.ok(dataGrid.getView('rowsView').getScrollbarWidth() > 0, 'vertical scrollBar exists');
-        } else {
-            assert.equal($('#dataGrid').find('.dx-datagrid-content-fixed').eq(1).css('margin-right'), '0px', 'margin-right is zero');
-            assert.strictEqual(dataGrid.getView('rowsView').getScrollbarWidth(), 0, 'vertical scrollBar not exists');
-        }
-        assert.notEqual($('#dataGrid').find('.dx-datagrid-content-fixed').eq(1).css('margin-bottom'), '0px', 'margin-bottom is not zero');
     });
 
     // T391169
@@ -3946,7 +1341,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T108204
     QUnit.test('resize on change visibility', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').hide().dxDataGrid({
             width: 1000,
             loadingTimeout: undefined,
@@ -3969,7 +1364,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('Height of Data grid is not changed when allowResizing is false and allowReordering is true', function(assert) {
-    // arrange, act
+        // arrange, act
         const testElement = $('#dataGrid').height(600);
         const $dataGrid = testElement.dxDataGrid({
             width: 1000,
@@ -3987,73 +1382,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(Math.round($dataGrid.find('.dx-datagrid-rowsview').parent().height()), 600, 'height of datagrid');
     });
 
-    // T117114
-    QUnit.test('columns width when all columns have width and scrolling mode is virtual', function(assert) {
-    // arrange, act
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 1000,
-            height: 200,
-            loadingTimeout: undefined,
-            dataSource: [{}, {}, {}, {}, {}, {}, {}],
-            searchPanel: {
-                visible: true
-            },
-            scrolling: { mode: 'virtual' },
-            columns: [
-                { dataField: 'field1', width: 100 },
-                { dataField: 'field2', width: 100 },
-                { dataField: 'field3', width: 100 },
-                { dataField: 'field4', width: 100 }
-            ]
-        });
-
-        const $dataGridTables = $dataGrid.find('.dx-datagrid-table');
-        // assert
-        assert.equal($dataGridTables.length, 2);
-        assert.equal($dataGridTables.eq(0).find('.dx-row').first().find('td').last()[0].getBoundingClientRect().width, 700);
-        assert.equal($dataGridTables.eq(1).find('.dx-row').first().find('td').last()[0].getBoundingClientRect().width, 700);
-    });
-
-    // T352218
-    QUnit.test('columns width when all columns have width and scrolling mode is virtual and columns fixing and grouping', function(assert) {
-    // arrange, act
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            remoteOperations: true,
-            dataSource: {
-                load: function() {
-                    return $.Deferred().resolve([{
-                        key: 1, items: [
-                            { key: 1, items: null, count: 20 }
-                        ]
-                    }, {
-                        key: 2, items: [
-                            { key: 1, items: null, count: 20 }
-                        ]
-                    }]);
-                }
-            },
-            scrolling: { mode: 'virtual' },
-            columnFixing: { enabled: true },
-            columns: [
-                { dataField: 'field1', width: 100, groupIndex: 0 },
-                { dataField: 'field2', width: 100, groupIndex: 1 },
-                { dataField: 'field3', width: 100 },
-                { dataField: 'field4', width: 100 }
-            ]
-        });
-
-        const $dataGridTables = $dataGrid.find('.dx-datagrid-content').not('.dx-datagrid-content-fixed').find('.dx-datagrid-table');
-
-        // assert
-        assert.equal($dataGridTables.length, 2);
-        assert.equal($dataGridTables.eq(0).find('.dx-row').first().find('td').last()[0].getBoundingClientRect().width, 100);
-        assert.equal($dataGridTables.eq(1).find('.dx-data-row').first().find('td').last()[0].getBoundingClientRect().width, 100);
-    });
-
     // T144297
     QUnit.test('columns width when all columns have width and dataGrid width auto', function(assert) {
-    // arrange, act
+        // arrange, act
         $('#container').width(300);
 
         const $dataGrid = $('#dataGrid').dxDataGrid({
@@ -4082,39 +1413,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal($dataGrid.width(), 100);
     });
 
-    // T533852
-    QUnit.test('last column should have correct width if all columns have width and native vertcal scrollbar is shown', function(assert) {
-        if(devices.real().deviceType !== 'desktop') {
-            assert.ok(true, 'This test is not actual for mobile devices');
-            return;
-        }
-        // arrange
-
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            height: 100,
-            scrolling: {
-                useNative: true
-            },
-            dataSource: [{}, {}, {}, {}, {}, {}, {}],
-            columns: [
-                { dataField: 'field1', width: 50 },
-                { dataField: 'field2', width: 50 },
-                { dataField: 'field3', width: 50 },
-                { dataField: 'field4', width: 50 }
-            ]
-        });
-
-        // act
-        this.clock.tick(0);
-
-        // assert
-        assert.ok($dataGrid.width() > 200, 'grid\'s width is more then column widths sum');
-        assert.equal($dataGrid.find('.dx-row').first().find('td').last().outerWidth(), 50, 'last column have correct width');
-    });
-
     // T618230
     QUnit.test('last column with disabled allowResizing should not change width if all columns have width less grid\'s width', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             width: 400,
             loadingTimeout: undefined,
@@ -4132,29 +1433,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal($dataGrid.find('.dx-row').first().find('td').last().prev()[0].getBoundingClientRect().width, 250, 'previuos last column have correct width');
     });
 
-    // T643192
-    QUnit.test('fixed column should have correct width if all columns with disabled allowResizing and with width', function(assert) {
-    // arrange, act
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{}],
-            columns: [
-                { dataField: 'field1', width: 50, fixed: true },
-                { dataField: 'field2', width: 50, allowResizing: false },
-                { dataField: 'field3', width: 50, allowResizing: false }
-            ]
-        });
-
-        // assert
-        const $firstRow = $dataGrid.dxDataGrid('instance').getRowElement(0);
-        assert.equal($dataGrid.outerWidth(), 150, 'grid width');
-        assert.equal($($firstRow[0]).children()[0].getBoundingClientRect().width, 50, 'first cell in main table have correct width');
-        assert.equal($($firstRow[1]).children()[0].getBoundingClientRect().width, 50, 'first cell in fixed table have correct width');
-    });
-
     // T387828
     QUnit.test('columns width when all columns have width and dataGrid with fixed width', function(assert) {
-    // arrange
+        // arrange
         const $dataGrid = $('#dataGrid').dxDataGrid({
             width: 300,
             loadingTimeout: undefined,
@@ -4177,7 +1458,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T332448
     QUnit.test('columns width when all columns have width and dataGrid width auto and showBorders enabled', function(assert) {
-    // arrange, act
+        // arrange, act
         $('#container').width(300);
 
         const $dataGrid = $('#dataGrid').dxDataGrid({
@@ -4203,7 +1484,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T154611
     QUnit.test('max-width style property must be work for grid', function(assert) {
-    // arrange, act
+        // arrange, act
         $('#dataGrid').css('max-width', 200);
         $('#container').width(300);
 
@@ -4230,7 +1511,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T144297
     QUnit.test('columns width when all columns have width, one column width in percent format and dataGrid width is auto', function(assert) {
-    // arrange, act
+        // arrange, act
         $('#container').width(400);
 
         const $dataGrid = $('#dataGrid').dxDataGrid({
@@ -4262,7 +1543,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T344125
     QUnit.test('column width does not changed after changing grid\'s width when columnAutoWidth enabled', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             width: 100,
             loadingTimeout: undefined,
@@ -4289,7 +1570,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('Correct calculate height of the grid when wordWrapEnabled is true (T443257)', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGridElement = $('#dataGrid').dxDataGrid({
             height: 300,
             loadingTimeout: undefined,
@@ -4307,7 +1588,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('expand column width when summary with alignByColumn exists', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             dataSource: [{ field1: 1, field2: 2, field3: 3, field4: 4 }],
             loadingTimeout: undefined,
@@ -4332,7 +1613,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('Check sum of views height in grid', function(assert) {
-    // arrange
+        // arrange
         function generateDataSource(count) {
             const result = [];
 
@@ -4375,292 +1656,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.ok(resultHeight >= 0 && resultHeight <= 2, 'result height');
     });
 
-    QUnit.test('Horizontal scroll position of headers view is changed_T251448', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 400,
-            dataSource: [{
-                firstName: 'Test Name',
-                lastName: 'Test Last Name',
-                room: 101,
-                birthDay: '10/12/2004'
-            }],
-            columns: [
-                { dataField: 'firstName', width: 200 },
-                { dataField: 'lastName', width: 200 },
-                { dataField: 'room', width: 200 },
-                { dataField: 'birthDay', width: 200 }
-            ],
-            summary: {
-                totalItems: [
-                    {
-                        column: 'firstName',
-                        summaryType: 'count'
-                    },
-                    {
-                        column: 'room',
-                        summaryType: 'max'
-                    }
-                ]
-            }
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-
-        // act
-        this.clock.tick();
-
-        const $headersView = $dataGrid.find('.dx-datagrid-headers' + ' .dx-datagrid-scroll-container').first();
-        $headersView.scrollLeft(400);
-        $($headersView).trigger('scroll');
-        const $footerView = $dataGrid.find('.dx-datagrid-total-footer .dx-datagrid-scroll-container').first();
-
-        // assert
-        assert.equal(dataGrid._views.rowsView.getScrollable().scrollLeft(), 400, 'scroll left of rows view');
-        assert.equal($footerView.scrollLeft(), 400, 'scroll left of footer view');
-    });
-
-    // T702241
-    QUnit.test('Scroll position headers after changing of headerFilter setting', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 200,
-            scrolling: {
-                useNative: false
-            },
-            columns: [
-                { dataField: 'firstName', width: 200 },
-                { dataField: 'lastName', width: 200 }
-            ]
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-        let $headersView;
-
-        // act
-        this.clock.tick();
-
-        $headersView = $dataGrid.find('.dx-datagrid-headers' + ' .dx-datagrid-scroll-container').first();
-        $headersView.scrollLeft(200);
-        $($headersView).trigger('scroll');
-
-        dataGrid.option('headerFilter.visible', true);
-
-        // assert
-        $headersView = $dataGrid.find('.dx-datagrid-headers' + ' .dx-datagrid-scroll-container').first();
-        assert.equal($headersView.scrollLeft(), 200);
-    });
-
-    QUnit.test('Horizontal scroll position of footer view is changed_T251448', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 400,
-            dataSource: [{
-                firstName: 'Test Name',
-                lastName: 'Test Last Name',
-                room: 101,
-                birthDay: '10/12/2004'
-            }],
-            columns: [
-                { dataField: 'firstName', width: 200 },
-                { dataField: 'lastName', width: 200 },
-                { dataField: 'room', width: 200 },
-                { dataField: 'birthDay', width: 200 }
-            ],
-            summary: {
-                totalItems: [
-                    {
-                        column: 'firstName',
-                        summaryType: 'count'
-                    },
-                    {
-                        column: 'room',
-                        summaryType: 'max'
-                    }
-                ]
-            }
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-
-        // act
-        this.clock.tick();
-
-        const $footerView = $dataGrid.find('.dx-datagrid-total-footer .dx-datagrid-scroll-container').first();
-        $footerView.scrollLeft(300);
-        $($footerView).trigger('scroll');
-        const $headersView = $dataGrid.find('.dx-datagrid-headers' + ' .dx-datagrid-scroll-container').first();
-
-        // assert
-        assert.equal(dataGrid._views.rowsView.getScrollable().scrollLeft(), 300, 'scroll left of rows view');
-        assert.equal($headersView.scrollLeft(), 300, 'scroll left of headers view');
-    });
-
-    QUnit.test('Total summary row should be rendered if row rendering mode is virtual', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 300,
-            dataSource: [{ id: 1 }],
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual'
-            },
-            summary: {
-                totalItems: [{
-                    column: 'id',
-                    summaryType: 'count'
-                }]
-            }
-        });
-
-        // act
-        this.clock.tick();
-
-        const $footerView = $dataGrid.find('.dx-datagrid-total-footer');
-        assert.ok($footerView.is(':visible'), 'footer view is visible');
-        assert.strictEqual($footerView.find('.dx-row').length, 1, 'one footer row is rendered');
-    });
-
-    QUnit.test('Keep horizontal scroller position after refresh with native scrolling', function(assert) {
-        const done = assert.async();
-
-        const dataGrid = createDataGrid({
-            width: 150,
-            columnAutoWidth: true,
-            dataSource: [
-                { id: 1, firstName: 'Ann', lastName: 'Jones', gender: 'female', age: 34, telephone: 123561, city: 'London', country: 'UK', occupy: 'Manager' },
-                { id: 2, firstName: 'George', lastName: 'Flinstone', gender: 'male', age: 40, telephone: 161, city: 'Phoenix', country: 'USA', occupy: 'Boss' },
-                { id: 3, firstName: 'Steve', lastName: 'Blacksmith', gender: 'male', age: 24, telephone: 1141, city: 'Deli', country: 'India', occupy: 'Reporter' },
-                { id: 4, firstName: 'John', lastName: 'Dow', gender: 'male', age: 61, telephone: 123, city: 'Bali', country: 'Spain', occupy: 'None' },
-                { id: 5, firstName: 'Jenny', lastName: 'Campbell', gender: 'female', age: 22, telephone: 121, city: 'Moscow', country: 'Russia', occupy: 'Accounting' }
-            ],
-            scrolling: { useNative: true },
-            headerFilter: {
-                visible: true
-            }
-        });
-
-        this.clock.tick();
-        this.clock.restore();
-
-        const scrollableInstance = dataGrid.getView('rowsView').getScrollable();
-        scrollableInstance.scrollTo({ x: 150 });
-        function scrollHandler() {
-            scrollableInstance.off('scroll', scrollHandler);
-            // act
-            dataGrid.refresh().done(function() {
-            // assert
-                assert.equal(scrollableInstance.scrollLeft(), 150, 'Grid save its horizontal scroll position after refresh');
-                done();
-            });
-        }
-
-        scrollableInstance.on('scroll', scrollHandler);
-    });
-
-    // T473860, T468902
-    QUnit.test('Keep horizontal scroller position after refresh when all columns have widths', function(assert) {
-        this.clock.restore();
-        const done = assert.async();
-
-        const dataGrid = createDataGrid({
-            width: 200,
-            loadingTimeout: undefined,
-            dataSource: [
-                { field1: 'Test Test' }
-            ],
-            columnAutoWidth: true,
-            columns: [
-                { dataField: 'field1', width: 100 },
-                { dataField: 'field1', width: 100 },
-                { dataField: 'field1', width: 100 },
-                { dataField: 'field1', width: 100 }
-            ]
-        });
-
-        const scrollableInstance = dataGrid.getView('rowsView').getScrollable();
-        scrollableInstance.scrollTo({ x: 150 });
-
-        function scrollHandler() {
-            scrollableInstance.off('scroll', scrollHandler);
-            setTimeout(function() {
-                dataGrid.refresh().done(function() {
-                    assert.equal(scrollableInstance.scrollLeft(), 150, 'Grid save its horizontal scroll position after refresh');
-                    done();
-                });
-            });
-        }
-
-        scrollableInstance.on('scroll', scrollHandler);
-    });
-
-    // T345699
-    QUnit.test('Keep horizontal scroller position after grouping column with native scrolling', function(assert) {
-    // arrange
-        this.clock.restore();
-        const done = assert.async();
-
-        const dataGrid = createDataGrid({
-            width: 150,
-            columnAutoWidth: true,
-            dataSource: [
-                { id: 1, firstName: 'Ann', lastName: 'Jones', gender: 'female', age: 34, telephone: 123561, city: 'London', country: 'UK', occupy: 'Manager' },
-                { id: 2, firstName: 'George', lastName: 'Flinstone', gender: 'male', age: 40, telephone: 161, city: 'Phoenix', country: 'USA', occupy: 'Boss' },
-                { id: 3, firstName: 'Steve', lastName: 'Blacksmith', gender: 'male', age: 24, telephone: 1141, city: 'Deli', country: 'India', occupy: 'Reporter' },
-                { id: 4, firstName: 'John', lastName: 'Dow', gender: 'male', age: 61, telephone: 123, city: 'Bali', country: 'Spain', occupy: 'None' },
-                { id: 5, firstName: 'Jenny', lastName: 'Campbell', gender: 'female', age: 22, telephone: 121, city: 'Moscow', country: 'Russia', occupy: 'Accounting' }
-            ],
-            loadingTimeout: undefined,
-            scrolling: {
-                useNative: true
-            },
-            headerFilter: {
-                visible: true
-            }
-        });
-        const scrollableInstance = dataGrid.getView('rowsView').getScrollable();
-
-        scrollableInstance.on('scroll', function() {
-            setTimeout(function() {
-            // act
-                dataGrid.columnOption('city', 'groupIndex', 0);
-                setTimeout(function() {
-                // assert
-                    assert.equal(scrollableInstance.scrollLeft(), 400, 'Grid save its horizontal scroll position after refresh');
-                    done();
-                });
-            });
-        });
-
-        scrollableInstance.scrollTo({ x: 400 });
-    });
-
-    // T362355
-    QUnit.test('Keep vertical browser scroll position after refresh with freespace row', function(assert) {
-        $('#qunit-fixture').css('overflowY', 'auto').height(50);
-
-        const items = [];
-        for(let i = 0; i < 21; i++) {
-            items.push({});
-        }
-
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columns: ['test'],
-            dataSource: items
-        });
-        dataGrid.pageIndex(1);
-
-
-        $('#qunit-fixture').scrollTop(500);
-
-        // assert
-        assert.equal($('#qunit-fixture').scrollTop(), 500, 'scroll top');
-
-        // act
-        dataGrid.refresh();
-
-        // assert
-        assert.equal($('#qunit-fixture').scrollTop(), 500, 'scroll top');
-    });
-
     // T135244
     QUnit.test('Load count on start', function(assert) {
         let loadCallCount = 0;
@@ -4677,43 +1672,6 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         });
 
         assert.equal(loadCallCount, 1, 'one load count on start');
-    });
-
-    // T162735, T406593
-    QUnit.test('Load count on start when stateStoring enabled with search/filterRow values', function(assert) {
-        let loadCallCount = 0;
-        let loadFilter;
-        let contentReadyCallCount = 0;
-        const dataGrid = createDataGrid({
-            onContentReady: function() {
-                contentReadyCallCount++;
-            },
-            remoteOperations: { filtering: true, sorting: true, paging: true },
-            dataSource: {
-                load: function(options) {
-                    loadCallCount++;
-                    loadFilter = options.filter;
-                    return $.Deferred().resolve([{ field1: 'text1', field2: 100 }, { field1: 'text2', field2: 200 }], { totalCount: 2 });
-                }
-            },
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {
-                        columns: [{ dataField: 'field1', dataType: 'string', visibleIndex: 0 }, { dataField: 'field2', dataType: 'number', visibleIndex: 1 }],
-                        searchText: '200'
-                    };
-                }
-            }
-
-        });
-
-        this.clock.tick();
-        assert.ok(dataGrid);
-        assert.equal(contentReadyCallCount, 1, 'contentReady is called once');
-        assert.equal(loadCallCount, 1, '1 load count on start');
-        assert.deepEqual(loadFilter, [['field1', 'contains', '200'], 'or', ['field2', '=', 200]]);
     });
 
     // T268912
@@ -4744,242 +1702,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         });
     });
 
-    // T240338
-    QUnit.test('Loading columns state when all columns have width and one column is hidden', function(assert) {
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', width: 100 }, { dataField: 'field2', width: 100 }, { dataField: 'field3', width: 100 }],
-            selection: {
-                mode: 'multiple'
-            },
-            columnChooser: { enabled: true },
-            dataSource: [],
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {
-                        columns: [{ dataField: 'field1', visibleIndex: 0, visible: true, width: 100 }, { dataField: 'field2', visibleIndex: 1, visible: true, width: 100 }, { dataField: 'field3', visibleIndex: 2, visible: false, width: 100 }]
-                    };
-                }
-            }
-
-        });
-
-        // assert
-        assert.equal(dataGrid.getController('columns').getVisibleColumns().length, 0, 'visible column count');
-
-        // act
-        this.clock.tick();
-
-        // assert
-        const visibleColumns = dataGrid.getController('columns').getVisibleColumns();
-        assert.equal(visibleColumns.length, 3, 'visible column count');
-        assert.equal(visibleColumns[0].command, 'select', 'select column');
-        assert.equal(visibleColumns[1].dataField, 'field1', 'field1 column');
-        assert.equal(visibleColumns[2].dataField, 'field2', 'field2 column');
-    });
-
-    // T235091
-    QUnit.test('pageSize state is not applied when scrolling mode is virtual', function(assert) {
-        const dataGrid = createDataGrid({
-            columns: ['field1', 'field2'],
-            dataSource: [],
-            loadingTimeout: undefined,
-            scrolling: { mode: 'virtual' },
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {
-                        pageSize: 10
-                    };
-                }
-            }
-
-        });
-
-        // act
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.pageSize(), 20, 'pageSize from stateStoring is not applied');
-    });
-
-    // T235091
-    QUnit.test('pageSize state is applied when scrolling mode is not virtual', function(assert) {
-        const dataGrid = createDataGrid({
-            columns: ['field1', 'field2'],
-            dataSource: [],
-            loadingTimeout: undefined,
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {
-                        pageSize: 10
-                    };
-                }
-            }
-        });
-
-        // act
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.pageSize(), 10, 'pageSize from stateStoring is applied');
-    });
-
-    // T152307
-    QUnit.test('no action cursor for column header when sorting and dragging not allowed', function(assert) {
-    // act
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columns: [{ dataField: 'field1', allowSorting: false }, { dataField: 'field2' }],
-            dataSource: []
-        });
-
-        // assert
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-drag-action').length, 0, 'no drag actions');
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-action').length, 1, 'one action');
-        assert.ok($(dataGrid.$element()).find('.dx-header-row > td').eq(1).hasClass('dx-datagrid-action'));
-
-        // act
-        dataGrid.showColumnChooser();
-
-        // assert
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-drag-action').length, 2, 'two drag actions for hiding columns');
-    });
-
-    // T862537
-    QUnit.test('column should be draggable if grid contains this column and column with allowHiding: false', function(assert) {
-    // act
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columns: [{ dataField: 'field1', allowHiding: false }, { dataField: 'field2' }],
-            dataSource: []
-        });
-
-        // assert
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-drag-action').length, 0, 'no drag actions');
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-action').length, 2, 'two actions');
-
-        // act
-        dataGrid.showColumnChooser();
-
-        // assert
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-drag-action').length, 1, 'one drag action for hiding column');
-    });
-
-    QUnit.test('Correct runtime changing of a columnChooser mode (string)', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columns: [{ dataField: 'field1', allowSorting: false }, { dataField: 'field2' }],
-            dataSource: []
-        });
-
-        // act
-        dataGrid.showColumnChooser();
-
-        let $overlayWrapper = dataGrid.getView('columnChooserView')._popupContainer._wrapper();
-
-        assert.ok($overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-drag'), 'has dragAndDrop mode class');
-        assert.ok(!$overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-select'), 'hasn\'t select mode class');
-
-        dataGrid.option('columnChooser.mode', 'select');
-
-        $overlayWrapper = dataGrid.getView('columnChooserView')._popupContainer._wrapper();
-
-        // assert
-        assert.ok(!$overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-drag'), 'hasn\'t dragAndDrop mode class');
-        assert.ok($overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-select'), 'has select mode class');
-    });
-
-    QUnit.test('Correct runtime changing of a columnChooser mode (object)', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columns: [{ dataField: 'field1', allowSorting: false }, { dataField: 'field2' }],
-            dataSource: []
-        });
-
-        // act
-        dataGrid.showColumnChooser();
-
-        let $overlayWrapper = dataGrid.getView('columnChooserView')._popupContainer._wrapper();
-
-        assert.ok($overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-drag'), 'has dragAndDrop mode class');
-        assert.ok(!$overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-select'), 'hasn\'t select mode class');
-
-        dataGrid.option({ columnChooser: { mode: 'select' } });
-
-        $overlayWrapper = dataGrid.getView('columnChooserView')._popupContainer._wrapper();
-
-        // assert
-        assert.ok(!$overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-drag'), 'hasn\'t dragAndDrop mode class');
-        assert.ok($overlayWrapper.hasClass('dx-datagrid-column-chooser-mode-select'), 'has select mode class');
-    });
-
-    QUnit.test('ColumnChooser\'s treeView get correct default config (without checkboxes)', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columnChooser: { mode: 'select' },
-            columns: [{ dataField: 'field1', allowSorting: false }, { dataField: 'field2', visible: false }],
-            dataSource: []
-        });
-
-        // act
-        dataGrid.showColumnChooser();
-
-        let $overlayWrapper = dataGrid.getView('columnChooserView')._popupContainer._wrapper();
-
-        assert.ok($overlayWrapper.find('.dx-checkbox').length, 'There are checkboxes in columnChooser');
-
-        dataGrid.option({ columnChooser: { mode: 'dragAndDrop' } });
-
-        $overlayWrapper = dataGrid.getView('columnChooserView')._popupContainer._wrapper();
-
-        // assert
-        assert.ok(!$overlayWrapper.find('.dx-checkbox').length, 'There aren\'t checkboxes in columnChooser');
-    });
-
-    QUnit.test('Rows after push are showed correctly when virtual scrolling and grouping are enabled', function(assert) {
-    // arrange
-
-        const data = [];
-        for(let i = 0; i < 25; i++) {
-            data.push({ id: i, field: 123 });
-        }
-
-        const dataGrid = createDataGrid({
-            dataSource: data,
-            keyExpr: 'id',
-            height: 800,
-            scrolling: {
-                mode: 'virtual'
-            },
-            columns: [{
-                dataField: 'id',
-                groupIndex: 0
-            }, {
-                dataField: 'field'
-            }]
-        });
-
-        this.clock.tick();
-
-        // act
-        dataGrid.getDataSource().store().push([{ type: 'update', key: 1, data: { id: 1, field: 125 } }]);
-
-        this.clock.tick();
-        // assert
-        assert.equal($(dataGrid.getRowElement(0)).position().top, 0, 'first row position');
-    });
-
     // T756338
     QUnit.test('keyOf should not be called too often after push with row updates', function(assert) {
-    // arrange
+        // arrange
         const arrayStore = new ArrayStore({
             data: [{ id: 0 }, { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
             key: 'id'
@@ -5007,216 +1732,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(keyOfSpy.callCount, 55, 'keyOf call count');
     });
 
-    // T802967
-    QUnit.test('calculateFilterExpression should not be called infinite times if it returns function and scrolling mode is virtual', function(assert) {
-        const data = [];
-        for(let i = 0; i < 25; i++) {
-            data.push({ test: i });
-        }
-        let calculateFilterExpressionCallCount = 0;
-        try {
-            createDataGrid({
-                height: 1000,
-                loadingTimeout: undefined,
-                scrolling: {
-                    mode: 'virtual'
-                },
-                columns: [{
-                    selectedFilterOperation: '=',
-                    filterValue: [],
-                    dataField: 'test',
-                    dataType: 'number',
-                    calculateFilterExpression: function(filterValues) {
-                        calculateFilterExpressionCallCount++;
-                        return function() {
-                            return filterValues.length === 0;
-                        };
-                    }
-                }],
-                dataSource: data
-            });
-
-        } catch(err) {
-            assert.ok(false, 'the error is thrown');
-        } finally {
-            assert.equal(calculateFilterExpressionCallCount, 3, 'calculateFilterExpression call count');
-        }
-    });
-
-    // T802967
-    QUnit.test('getCombinedFilter should work correctly if filterPanel is visible and calculateFilterExpression returns function', function(assert) {
-        const data = [];
-        for(let i = 0; i < 21; i++) {
-            data.push({ test: i });
-        }
-        let calculateFilterExpressionCallCount = 0;
-        const grid = createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: data,
-            filterPanel: { visible: true },
-            columns: [{
-                selectedFilterOperation: '=',
-                filterValue: 0,
-                dataField: 'test',
-                calculateFilterExpression: function() {
-                    calculateFilterExpressionCallCount++;
-                    return function() {
-                        return true;
-                    };
-                }
-            }]
-        });
-
-        assert.equal(calculateFilterExpressionCallCount, 6, 'calculateFilterExpression call count');
-        assert.ok(grid.getCombinedFilter(), 'combined filter');
-        assert.equal(calculateFilterExpressionCallCount, 7, 'calculateFilterExpression call count');
-    });
-
-    // T364210
-    QUnit.test('Load count on start when EdmLiteral in calculatedFilterExpression is used and scrolling mode is virtual', function(assert) {
-        let loadCallCount = 0;
-        let contentReadyCallCount = 0;
-        const dataGrid = createDataGrid({
-            onContentReady: function() {
-                contentReadyCallCount++;
-            },
-            height: 100,
-            remoteOperations: {
-                paging: true, filtering: true
-            },
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual'
-            },
-            columns: [{
-                dataField: 'test',
-                selectedFilterOperation: '>',
-                filterValue: 50,
-                dataType: 'number',
-                calculateFilterExpression: function(value, filterOperation) {
-                    value = new EdmLiteral(value + 'm');
-                    return [this.dataField, filterOperation || '=', value];
-                }
-            }],
-            dataSource: {
-                pageSize: 5,
-                load: function(options) {
-                    loadCallCount++;
-                    return $.Deferred().resolve([{}, {}, {}, {}, {}], { totalCount: 100 });
-                }
-            }
-        });
-
-        assert.ok(dataGrid);
-        assert.equal(loadCallCount, 1, 'two load count on start');
-        assert.equal(contentReadyCallCount, 1, 'one contentReady on start');
-    });
-
-    QUnit.test('contentReady event must be raised once when scrolling mode is virtual', function(assert) {
-        let contentReadyCallCount = 0;
-        const dataGrid = createDataGrid({
-            onContentReady: function() {
-                contentReadyCallCount++;
-            },
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual'
-            },
-            dataSource: [{}, {}]
-        });
-
-        assert.ok(dataGrid);
-        assert.equal(contentReadyCallCount, 1, 'one contentReady on start');
-    });
-
-    // T691574
-    QUnit.test('refresh and height change should not break layout if rowRenderingMode is virtual', function(assert) {
-        function generateData(count) {
-            const items = [];
-
-            for(let i = 0; i < count; i++) {
-                items.push({
-                    someValue1: i,
-                    someValue2: i
-                });
-            }
-
-            return items;
-        }
-
-        // act
-        const dataGrid = createDataGrid({
-            height: 200,
-            columnAutoWidth: true,
-            loadingTimeout: undefined,
-            dataSource: generateData(10),
-            scrolling: {
-                rowPageSize: 2,
-                rowRenderingMode: 'virtual',
-                updateTimeout: 0
-            },
-            columns: [{
-                dataField: 'someValue1',
-                fixed: true
-            }, {
-                dataField: 'someValue2'
-            }],
-            summary: {
-                totalItems: [{
-                    column: 'someValue1',
-                    summaryType: 'sum'
-                }, {
-                    column: 'someValue2',
-                    summaryType: 'sum'
-                }]
-            }
-        });
-
-        // act
-        dataGrid.refresh();
-        dataGrid.option('height', 300);
-
-        // assert
-        assert.equal($(dataGrid.element()).find('.dx-datagrid-total-footer td').length, 4, 'summary cell count');
-    });
-
-    QUnit.test('row alternation should be correct if virtual scrolling is enabled and grouping is used', function(assert) {
-        const dataSource = [
-            { id: 1, group: 1 },
-            { id: 2, group: 1 },
-            { id: 3, group: 1 },
-            { id: 4, group: 1 },
-            { id: 5, group: 1 },
-        ];
-
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: dataSource,
-            scrolling: {
-                mode: 'virtual'
-            },
-            paging: {
-                pageSize: 4
-            },
-            rowAlternationEnabled: true,
-            columns: ['id', { dataField: 'group', groupIndex: 0 }]
-        });
-
-        const dataIndexes = dataGrid.getVisibleRows().map(function(row) {
-            return row.dataIndex;
-        });
-
-        const alternatedRowIndexes = [0, 1, 2, 3, 4, 5].filter(function(index) {
-            return $(dataGrid.getRowElement(index)).hasClass('dx-row-alt');
-        });
-
-        // assert
-        assert.deepEqual(dataIndexes, [undefined, 0, 1, 2, 3, 4], 'dataIndex values in rows');
-        assert.deepEqual(alternatedRowIndexes, [2, 4], 'row indexes with dx-row-alt class');
-    });
-
     QUnit.test('isReady when loading', function(assert) {
-    // act
+        // act
         const d = $.Deferred();
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
@@ -5236,8 +1753,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('command column widths calculated from styles', function(assert) {
-    // arrange
-    // act
+        // arrange
+        // act
         const $dataGrid = $('#dataGridWithStyle').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: {
@@ -5258,7 +1775,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T317140
     QUnit.test('Error on loading', function(assert) {
-    // act
+        // act
         const dataGrid = createDataGrid({
             columns: ['field1', 'field2'],
             dataSource: {
@@ -5280,7 +1797,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('Raise error if key field is missed', function(assert) {
-    // act
+        // act
         const errorUrl = 'http://js.devexpress.com/error/' + version.split('.').slice(0, 2).join('_') + '/E1046';
         const dataGrid = createDataGrid({
             columns: ['field1'],
@@ -5299,7 +1816,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
     });
 
     QUnit.test('Raise error if key field is missed and one of columns is named \'key\'', function(assert) {
-    // act
+        // act
         const errorUrl = 'http://js.devexpress.com/error/' + version.split('.').slice(0, 2).join('_') + '/E1046';
         const dataGrid = createDataGrid({
             columns: ['key'],
@@ -5317,71 +1834,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal($errorRow.find('.dx-error-message > a').attr('href'), errorUrl, 'Url error code');
     });
 
-    // T817255
-    QUnit.test('No error after ungrouping with custom store and column reordering', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            columns: ['field1', {
-                dataField: 'field2',
-                groupIndex: 0
-            }],
-            groupPanel: { visible: true },
-            allowColumnReordering: true,
-            dataSource: {
-                key: 'field1',
-                load: function() {
-                    return [{ field1: 1, field2: 1 }, { field1: 2, field2: 2 }];
-                }
-            }
-        });
-
-        this.clock.tick();
-
-        const columnController = dataGrid.getController('columns');
-
-        // act
-        columnController.moveColumn(0, 1, 'group', 'headers');
-
-        // assert
-        assert.strictEqual($($(dataGrid.$element()).find('.dx-error-row')).length, 0, 'no errors');
-    });
-
-    // T819729
-    QUnit.test('correct cellInfo is passed to cellTemplate function after ungrouping', function(assert) {
-    // arrange
-        let cellTemplateCallCount = 0;
-        const dataGrid = createDataGrid({
-            dataSource: [{ field1: 'some', field2: 'some' }, { field1: 'some', field2: 'some' }],
-            allowColumnReordering: true,
-            columns: [{
-                dataField: 'field1',
-                groupIndex: 0,
-                cellTemplate: function(cellElement, cellInfo) {
-                // assert
-                    cellTemplateCallCount++;
-                    assert.notOk(cellInfo.data.key);
-                    assert.notOk(cellInfo.data.items);
-                    assert.ok(cellInfo.data.field1);
-                    assert.ok(cellInfo.data.field2);
-                }
-            }, 'field2']
-        });
-
-        this.clock.tick();
-
-        const columnController = dataGrid.getController('columns');
-
-        // act
-        columnController.moveColumn(0, 1, 'group', 'headers');
-        cellTemplateCallCount = 0;
-        this.clock.tick();
-
-        // assert
-        assert.equal(cellTemplateCallCount, 2, 'cellTemplate call count');
-    });
-
     QUnit.test('Not raise error if key field is null', function(assert) {
-    // act
+        // act
         const dataGrid = createDataGrid({
             columns: ['field1'],
             keyExpr: 'ID',
@@ -5395,36 +1849,9 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal($errorRow.length, 0, 'error row is not shown');
     });
 
-    // T481276
-    QUnit.test('updateDimensions during grouping when fixed to right column exists', function(assert) {
-        let loadResult = $.Deferred().resolve([{}]);
-        const dataGrid = createDataGrid({
-            columns: ['field1', 'field2', { dataField: 'field3', fixed: true, fixedPosition: 'right' }],
-            loadingTimeout: undefined,
-            cacheEnabled: false,
-            dataSource: {
-                load: function() {
-                    return loadResult;
-                }
-            }
-        });
-
-
-        loadResult = $.Deferred();
-        dataGrid.columnOption('field1', 'groupIndex', 0);
-
-        // act
-        dataGrid.updateDimensions();
-        loadResult.resolve([{}]);
-
-        // assert
-        assert.ok(dataGrid.isReady(), 'dataGrid is ready');
-        assert.strictEqual($(dataGrid.$element()).find('.dx-group-row').length, 2, 'grouped rows are rendered');
-    });
-
     // T334530
     QUnit.test('columnHeaders visibility after change some options', function(assert) {
-    // act
+        // act
         const dataGrid = createDataGrid({
             columns: ['field1', 'field2'],
             dataSource: []
@@ -5515,7 +1942,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T439040
     QUnit.test('Toolbar templates should be called when toolbar is attached to dom', function(assert) {
-    // arrange, act
+        // arrange, act
         let toolbarPreparingCallCount = 0;
         let toolbarTemplateCallCount = 0;
 
@@ -5541,7 +1968,7 @@ QUnit.module('Initialization', baseModuleConfig, () => {
 
     // T471984
     QUnit.test('Custom toolbar item should be aligned', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             editing: {
                 allowAdding: true
@@ -5563,1392 +1990,8 @@ QUnit.module('Initialization', baseModuleConfig, () => {
         assert.equal(toolbarItemOffset, $(dataGrid.$element()).find('.dx-datagrid-search-panel').offset().top, 'toolbar sarch panel is aligned');
         assert.equal(toolbarItemOffset, $(dataGrid.$element()).find('.dx-toolbar .dx-datebox').offset().top, 'toolbar custom item is aligned');
     });
-
-    // T728069
-    QUnit.test('Horizontal scroll should not exist if fixed column with custom buttons exists', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            width: 600,
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            columnAutoWidth: true,
-            columns: ['field1', 'field2', {
-                type: 'buttons',
-                fixed: true,
-                buttons: [
-                    { icon: 'repeat' },
-                    { icon: 'repeat' },
-                    { icon: 'repeat' },
-                    { icon: 'repeat' },
-                    { icon: 'repeat' },
-                    { icon: 'repeat' }
-                ]
-            }]
-        });
-
-        // assert
-        const scrollable = dataGrid.getScrollable();
-        assert.roughEqual($(scrollable.content()).width(), $(scrollable._container()).width(), 1.01, 'no scroll');
-    });
-
-    if(browser.msie && parseInt(browser.version) <= 11) {
-        QUnit.test('Update the scrollable for IE browsers when the adaptive column is hidden', function(assert) {
-        // arrange
-
-
-            const dataGrid = createDataGrid({
-                dataSource: [{
-                    'ID': 4,
-                    'OrderNumber': 35711,
-                    'OrderDate': '2014/01/12'
-                }],
-                columnAutoWidth: true,
-                columnHidingEnabled: true,
-                columns: ['ID', 'OrderNumber', 'OrderDate']
-            });
-
-            this.clock.tick();
-
-            // act
-            const scrollable = dataGrid.$element().find('.dx-scrollable').data('dxScrollable');
-            sinon.spy(scrollable, 'update');
-            dataGrid.updateDimensions();
-            this.clock.tick();
-
-            // assert
-            const $lastDataCell = dataGrid.$element().find('.dx-last-data-cell');
-            assert.equal($lastDataCell.text(), '2014/01/12', 'text of last data cell');
-            assert.equal(scrollable.update.callCount, 2);
-
-
-        });
-    }
-
-    QUnit.test('search text when scrolling mode virtual and one column is not defined', function(assert) {
-    // arrange, act
-
-        const dataSource = [
-            { 'CompanyName': 'K&S Music' },
-            { 'CompanyName': 'Super Mart of the West' },
-            { 'CompanyName': 'Electronics Depot' },
-            { 'CompanyName': 'K&S Music' },
-            { 'CompanyName': 'Kiwi Market' }
-        ];
-
-        const dataGrid = createDataGrid({
-            dataSource: dataSource,
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual'
-            },
-            searchPanel: {
-                text: 'Kiwi'
-            },
-            paging: {
-                pageSize: 2
-            },
-            columns: ['CompanyName', 'Undefined'] }
-        );
-
-        assert.equal(dataGrid.getVisibleRows().length, 1, 'items were filtered');
-    });
-
-    // T820316
-    QUnit.test('Error should not be thrown when searching text in calculated column with lookup', function(assert) {
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{ text: 'text', num: 1 }, { text: 'text', num: 2 }],
-            searchPanel: {
-                visible: true
-            },
-            columns: [{
-                calculateCellValue: function(rowData) {
-                    return rowData.num;
-                },
-                allowFiltering: true,
-                lookup: {
-                    dataSource: [{ id: 1, name: 'one' }, { id: 2, name: 'two' }],
-                    valueExpr: 'id',
-                    displayExpr: 'name'
-                }
-            }, 'text']
-        });
-
-        try {
-            dataGrid.option('searchPanel.text', 'one');
-            this.clock.tick();
-        } catch(e) {
-            assert.ok(false, 'error was thrown');
-        }
-
-        const visibleRows = dataGrid.getVisibleRows();
-
-        assert.equal(visibleRows.length, 1, 'one row is visible');
-        assert.deepEqual(visibleRows[0].data, { text: 'text', num: 1 }, 'visible row\'s data');
-    });
-
-    // T583229
-    QUnit.test('The same page should not load when scrolling in virtual mode', function(assert) {
-        const pageIndexesForLoad = [];
-
-        const generateDataSource = function(count) {
-            const result = [];
-
-            for(let i = 0; i < count; ++i) {
-                result.push({ firstName: 'test name' + i, lastName: 'test lastName' + i, room: 100 + i, cash: 101 + i * 10 });
-            }
-
-            return result;
-        };
-        const data = generateDataSource(100);
-
-        const dataGrid = createDataGrid({
-            height: 300,
-            remoteOperations: true,
-            dataSource: {
-                load: function(loadOptions) {
-                    const d = $.Deferred();
-
-                    pageIndexesForLoad.push(loadOptions.skip / 20);
-                    setTimeout(function() {
-                        d.resolve({
-                            data: data.slice(loadOptions.skip, loadOptions.skip + loadOptions.take),
-                            totalCount: 100
-                        });
-                    }, 50);
-
-                    return d.promise();
-                }
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'standard',
-                useNative: false
-            }
-        });
-
-        this.clock.tick(200);
-
-        // assert
-        assert.deepEqual(pageIndexesForLoad, [0]);
-        assert.strictEqual(dataGrid.getVisibleRows().length, 20);
-
-        dataGrid.getScrollable().scrollTo({ y: 1 });
-        this.clock.tick(200);
-        dataGrid.getScrollable().scrollTo({ y: 700 });
-        this.clock.tick(10);
-        dataGrid.getScrollable().scrollTo({ y: 1400 });
-        this.clock.tick(200);
-
-        // assert
-        assert.deepEqual(pageIndexesForLoad, [0, 1, 2, 3]);
-        assert.strictEqual(dataGrid.getVisibleRows().length, 60);
-        assert.strictEqual(dataGrid.getVisibleRows()[0].data.room, 120);
-    });
-
-    function fastScrollTest(assert, that, responseTime, scrollStep, expectedLoadedPages) {
-    // arrange
-        const data = [];
-        const loadedPages = [];
-
-        for(let i = 0; i < 20; i++) {
-            data.push({ field: 'someData' });
-        }
-
-        const dataGrid = createDataGrid({
-            height: 300,
-            remoteOperations: true,
-            dataSource: {
-                load: function(loadOptions) {
-                    const d = $.Deferred();
-
-                    loadedPages.push(loadOptions.skip / 20);
-
-                    setTimeout(function() {
-                        d.resolve({
-                            data: data,
-                            totalCount: 1000
-                        });
-                    }, responseTime);
-
-                    return d.promise();
-                }
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'standard',
-                useNative: false
-            }
-        });
-
-        that.clock.tick(1000);
-        const scrollable = dataGrid.getScrollable();
-
-        scrollable.scrollTo({ y: 1 });
-        that.clock.tick(100);
-
-        // assert
-        assert.deepEqual(loadedPages, [0, 1], 'loaded pages');
-
-        // act
-        for(let i = 1; i <= 5; i++) {
-            scrollable.scrollTo({ y: scrollStep * i });
-            that.clock.tick(10);
-        }
-
-        that.clock.tick(1000);
-
-        // assert
-        assert.deepEqual(loadedPages, expectedLoadedPages);
-    }
-
-    // T815141
-    QUnit.test('Pages should not be loaded while scrolling fast if remoteOperations is true and server is slow', function(assert) {
-        fastScrollTest(assert, this, 500, 1200, [0, 1, 3, 8, 9]);
-    });
-
-    // T815141
-    QUnit.test('Pages should be loaded while scrolling fast if remoteOperations is true and server is fast', function(assert) {
-        fastScrollTest(assert, this, 50, 700, [0, 1, 2, 3, 4, 5, 6]);
-    });
-
-    // T815141
-    QUnit.test('Render should be sync while slowly scrolling if server is slow and page size is huge', function(assert) {
-    // arrange
-        const data = [];
-        const loadedPages = [];
-        const responseTime = 500;
-        const that = this;
-        let oldVirtualRowHeight;
-
-        for(let i = 0; i < 100; i++) {
-            data.push({ field: 'someData' });
-        }
-
-        const dataGrid = createDataGrid({
-            height: 300,
-            remoteOperations: true,
-            dataSource: {
-                load: function(loadOptions) {
-                    const d = $.Deferred();
-
-                    loadedPages.push(loadOptions.skip / 100);
-
-                    setTimeout(function() {
-                        d.resolve({
-                            data: data,
-                            totalCount: 1000
-                        });
-                    }, responseTime);
-
-                    return d.promise();
-                }
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            paging: {
-                pageSize: 100
-            }
-        });
-
-        that.clock.tick(1000);
-
-        const $dataGrid = $(dataGrid.element());
-        const scrollable = dataGrid.getScrollable();
-
-        oldVirtualRowHeight = $dataGrid.find('.dx-virtual-row').first().height();
-
-        for(let i = 1; i <= 10; i++) {
-        // act
-            scrollable.scrollTo({ y: 200 * i });
-
-            const virtualRowHeight = $dataGrid.find('.dx-virtual-row').first().height();
-
-            // assert
-            assert.deepEqual(loadedPages, [0, 1], 'loaded pages');
-            assert.ok(virtualRowHeight <= dataGrid.getScrollable().scrollTop(), 'first virtual row is not in viewport');
-            assert.equal($dataGrid.find('.dx-data-row').length, 15, 'data rows count');
-            assert.notEqual(virtualRowHeight, oldVirtualRowHeight, 'virtual row height was changed');
-
-            oldVirtualRowHeight = virtualRowHeight;
-        }
-    });
-
-    // T634232
-    QUnit.test('Scroll to third page if expanded grouping is enabled and scrolling mode is infinite', function(assert) {
-        const data = [];
-
-        for(let i = 0; i < 60; i++) {
-            data.push({ id: i + 1 });
-        }
-
-        const dataGrid = createDataGrid({
-            height: 300,
-            loadingTimeout: undefined,
-            dataSource: {
-                store: data,
-                group: 'id'
-            },
-            remoteOperations: { paging: true, filtering: true, sorting: true },
-            scrolling: {
-                timeout: 0,
-                mode: 'infinite',
-                useNative: false
-            }
-        });
-
-        dataGrid.getScrollable().scrollTo({ y: 1500 });
-        dataGrid.getScrollable().scrollTo({ y: 3000 });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 120);
-        assert.strictEqual(dataGrid.getVisibleRows()[0].data.key, 1);
-        assert.strictEqual(dataGrid.getVisibleRows()[40].data.key, 21);
-        assert.strictEqual(dataGrid.getVisibleRows()[80].data.key, 41);
-    });
-
-    // T748954
-    QUnit.test('Scroll to second page should works if scrolling mode is infinite, summary is defined and server returns totalCount', function(assert) {
-        const dataGrid = createDataGrid({
-            height: 100,
-            loadingTimeout: undefined,
-            scrolling: {
-                timeout: 0,
-                mode: 'infinite',
-                useNative: false
-            },
-            remoteOperations: true,
-            dataSource: {
-                key: 'id',
-                load: function(options) {
-                    const items = [];
-
-                    for(let i = options.skip; i < options.skip + options.take; i++) {
-                        items.push({ id: i + 1 });
-                    }
-
-                    return $.Deferred().resolve(items, {
-                        totalCount: 100000,
-                        summary: [100000]
-                    });
-                }
-            },
-            summary: {
-                totalItems: [{ column: 'id', summaryType: 'count' }]
-            }
-        });
-
-        // act
-        dataGrid.getScrollable().scrollTo({ y: 10000 });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 40);
-        assert.strictEqual(dataGrid.getVisibleRows()[0].key, 1);
-        assert.strictEqual(dataGrid.getVisibleRows()[39].key, 40);
-    });
-
-    QUnit.test('Scroll to second page should works if scrolling mode is infinite and local data source returns totalCount', function(assert) {
-    // arrange
-        const data = [];
-
-        for(let i = 0; i < 100; i++) {
-            data.push({ id: i + 1 });
-        }
-
-        const dataGrid = createDataGrid({
-            height: 100,
-            loadingTimeout: undefined,
-            scrolling: {
-                timeout: 0,
-                mode: 'infinite',
-                useNative: false
-            },
-            dataSource: {
-                key: 'id',
-                load: function(options) {
-                    return $.Deferred().resolve(data, {
-                        totalCount: 100000
-                    });
-                }
-            }
-        });
-
-        // act
-        dataGrid.getScrollable().scrollTo({ y: 10000 });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 40);
-        assert.strictEqual(dataGrid.getVisibleRows()[0].key, 1);
-        assert.strictEqual(dataGrid.getVisibleRows()[39].key, 40);
-    });
-
-    // T742926
-    QUnit.test('Scroll should works if error occurs during third page loading if scrolling mode is infinite', function(assert) {
-        let error = false;
-        const dataGrid = createDataGrid({
-            height: 300,
-            loadingTimeout: undefined,
-            dataSource: {
-                load: function(options) {
-                    if(error) {
-                        return $.Deferred().reject('Load error');
-                    }
-
-                    const data = [];
-
-                    for(let i = options.skip; i < options.skip + options.take; i++) {
-                        data.push({ id: i + 1 });
-                    }
-
-                    return $.Deferred().resolve(data);
-                }
-            },
-            remoteOperations: { paging: true },
-            scrolling: {
-                timeout: 0,
-                mode: 'infinite',
-                useNative: false
-            }
-        });
-
-        error = true;
-        dataGrid.getScrollable().scrollTo({ y: 10000 });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 20);
-        assert.strictEqual($(dataGrid.$element()).find('.dx-error-row').length, 1, 'error row is visible');
-
-
-        error = false;
-        dataGrid.getScrollable().scrollTo({ y: 10000 });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 40);
-        assert.strictEqual($(dataGrid.$element()).find('.dx-error-row').length, 0, 'error row is hidden');
-    });
-
-    QUnit.test('Scrollable should have the correct padding when the grid inside the ScrollView', function(assert) {
-    // arrange, act
-        $('#container').dxScrollView({
-            showScrollbar: 'always'
-        });
-        const dataGrid = createDataGrid({
-            dataSource: [{ field1: 1 }],
-            columnAutoWidth: true,
-            scrolling: {
-                showScrollbar: 'always'
-            }
-        });
-        this.clock.tick(30);
-
-        // assert
-        const $scrollableContent = $(dataGrid.getScrollable().content());
-        assert.strictEqual($scrollableContent.css('paddingRight'), '0px', 'paddingRight');
-        assert.strictEqual($scrollableContent.css('paddingLeft'), '0px', 'paddingLeft');
-    });
-
-    QUnit.test('Scrollable should have the correct padding when the grid inside the ScrollView in RTL', function(assert) {
-    // arrange, act
-        $('#container').dxScrollView({
-            showScrollbar: 'always'
-        });
-        const dataGrid = createDataGrid({
-            dataSource: [{ field1: 1 }],
-            columnAutoWidth: true,
-            rtlEnabled: true,
-            scrolling: {
-                showScrollbar: 'always'
-            }
-        });
-        this.clock.tick(30);
-
-        // assert
-        const $scrollableContent = $(dataGrid.getScrollable().content());
-        assert.strictEqual($scrollableContent.css('paddingRight'), '0px', 'paddingRight');
-        assert.strictEqual($scrollableContent.css('paddingLeft'), '0px', 'paddingLeft');
-    });
-
-    QUnit.test('Content height differs from the scrollable container height by the height of horizontal scroll (T865137)', function(assert) {
-        if(devices.real().deviceType !== 'desktop') {
-            assert.ok(true, 'not actual for not desktop devices');
-            return;
-        }
-
-        const dataGrid = createDataGrid({
-            height: 200,
-            width: 200,
-            dataSource: [{ id: 1, name: 'Sam', age: 26 }],
-            columnWidth: 100,
-            keyExpr: 'id',
-            scrolling: {
-                showScrollbar: 'always'
-            }
-        });
-        this.clock.tick();
-
-        const scrollable = dataGrid.getScrollable();
-        const content = dataGrid.$element().find('.dx-datagrid-rowsview .dx-datagrid-content')[0];
-        const scrollbarWidth = dataGrid.getView('rowsView').getScrollbarWidth(true);
-
-        assert.equal(scrollable.$element().height() - content.clientHeight, scrollbarWidth, 'Content height is correct');
-    });
-
-    QUnit.test('The freeSpace row height should not be more than 1 pixel when any command column is enabled with virtual row rendering mode (T881439)', function(assert) {
-        // NOTE: chromium browsers render TR with the height equals 1 pixels even if the row height is set to 0 pixels.
-        // That's why we need to check if the row height does not exceed 1 pixel.
-
-        // arrange
-        const freeSpaceRowHeightStatuses = [];
-        const data = [];
-
-        for(let i = 0; i < 50; i++) {
-            data.push({
-                id: i + 1,
-                name: `name_${i + 1}`
-            });
-        }
-
-        const gridOptions = {
-            keyExpr: 'name',
-            width: 100,
-            dataSource: {
-                store: data,
-                group: 'id'
-            },
-            showBorders: true,
-            remoteOperations: false,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual'
-            },
-            masterDetail: {
-                enabled: true
-            },
-            selection: {
-                mode: 'multiple'
-            },
-            editing: {
-                allowUpdating: true
-            },
-            columnHidingEnabled: true,
-            onContentReady: function(e) {
-                const $freeSpaceRow = $(e.component.getView('rowsView')._getFreeSpaceRowElements());
-                freeSpaceRowHeightStatuses.push($freeSpaceRow.height() <= 1);
-            }
-        };
-
-        createDataGrid(gridOptions);
-        this.clock.tick();
-
-        // assert
-        assert.ok(freeSpaceRowHeightStatuses.length);
-        freeSpaceRowHeightStatuses.forEach(heightStatus => assert.ok(heightStatus));
-    });
-
-    QUnit.test('Data rows should not be scrolled on refresh (T884308)', function(assert) {
-        // arrange
-        const onScrollHandler = sinon.spy();
-        const generateData = function() {
-            const data = [];
-            for(let i = 0; i < 100; i++) {
-                data.push({
-                    id: i + 1
-                });
-            }
-            return data;
-        };
-        const gridOptions = {
-            dataSource: generateData(),
-            height: 400,
-            keyExpr: 'id',
-            scrolling: {
-                mode: 'virtual'
-            }
-        };
-        const dataGrid = createDataGrid(gridOptions);
-        this.clock.tick();
-        dataGrid.getScrollable().on('scroll', onScrollHandler);
-        dataGrid.refresh();
-        this.clock.tick();
-
-        // assert
-        assert.notOk(onScrollHandler.called, 'onScroll handler is not called');
-    });
-
-    QUnit.test('Error row should be shown when state loading failed (T894590)', function(assert) {
-        // arrange
-        const errorText = 'test error';
-        const contentReadyHandler = sinon.spy();
-        const dataErrorOccurred = sinon.spy();
-        const gridOptions = {
-            dataSource: [{ id: 1 }],
-            columns: ['id'],
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return $.Deferred().reject(errorText).promise();
-                }
-            },
-            onContentReady: contentReadyHandler,
-            onDataErrorOccurred: dataErrorOccurred
-        };
-        const dataGrid = createDataGrid(gridOptions);
-        this.clock.tick();
-
-        const $headerRow = $(dataGrid.element()).find('.dx-header-row');
-        const $errorRow = $(dataGrid.element()).find('.dx-error-row');
-        const renderedRowCount = dataGrid.getVisibleRows().length;
-
-        // assert
-        assert.ok(contentReadyHandler.called, 'onContentReady is called');
-        assert.equal(dataErrorOccurred.callCount, 1, 'onDataErrorOccurred is called');
-        assert.equal(dataErrorOccurred.getCall(0).args[0].error, errorText, 'error text is correct');
-        assert.equal(renderedRowCount, 0, 'there are no rendered data rows');
-        assert.ok($headerRow.length, 'header row is rendered');
-        assert.ok($errorRow.length, 'error row is rendered');
-        assert.equal($errorRow.find('.dx-error-message').text(), errorText, 'error text is correct');
-    });
-
-    QUnit.test('Error row should display the default error message when reject is called without a parameter in stateStoring.customLoad (T894590)', function(assert) {
-        // arrange
-        const gridOptions = {
-            dataSource: [],
-            columns: ['id'],
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return $.Deferred().reject().promise();
-                }
-            }
-        };
-        const dataGrid = createDataGrid(gridOptions);
-        this.clock.tick();
-
-        const $errorRow = $(dataGrid.element()).find('.dx-error-row');
-
-        // assert
-        assert.ok($errorRow.length, 'error row is rendered');
-        assert.equal($errorRow.find('.dx-error-message').text(), 'Unknown error', 'default error message');
-    });
-
-    QUnit.test('Error row should not be displayed when reject is called in stateStoring.customLoad and errorRowEnabled === false (T894590)', function(assert) {
-        // arrange
-        const dataErrorOccurred = sinon.spy();
-        const gridOptions = {
-            dataSource: [],
-            columns: ['id'],
-            errorRowEnabled: false,
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return $.Deferred().reject().promise();
-                }
-            },
-            onDataErrorOccurred: dataErrorOccurred
-        };
-        const dataGrid = createDataGrid(gridOptions);
-        this.clock.tick();
-
-        const $errorRow = $(dataGrid.element()).find('.dx-error-row');
-
-        // assert
-        assert.equal(dataErrorOccurred.callCount, 1, 'onDataErrorOccurred is called');
-        assert.equal(dataErrorOccurred.getCall(0).args[0].error, 'Unknown error', 'default error message');
-        assert.notOk($errorRow.length, 'error row is not rendered');
-    });
-
-    // T921829
-    QUnit.test('Row adding should work correctly if add button was clicked before table render', function(assert) {
-        // arrange
-        const dataGrid = createDataGrid({
-            dataSource: {
-                load: function() {
-                    const d = $.Deferred();
-                    setTimeout(() => {
-                        d.resolve([]);
-                    });
-
-                    return d;
-                }
-            },
-            columns: [{
-                dataField: 'field1',
-                fixed: true
-            }, 'field2', 'field3', 'field4', 'field5'],
-            showBorders: true,
-            editing: {
-                allowAdding: true
-            },
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {};
-                }
-            }
-        });
-
-        // act
-        $('.dx-datagrid-addrow-button').trigger('dxclick');
-        this.clock.tick();
-
-        // assert
-        const rows = dataGrid.getVisibleRows();
-        assert.equal(rows.length, 1, 'row was added');
-    });
 });
 
-
-QUnit.module('Virtual row rendering', baseModuleConfig, () => {
-    // T644981
-    QUnit.test('grouping should works correctly if row rendering mode is virtual and dataSource is remote', function(assert) {
-    // arrange, act
-        const array = [];
-
-        for(let i = 1; i <= 20; i++) {
-            array.push({ id: i, group: 'group' + (i % 8 + 1) });
-        }
-
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 400,
-            loadingTimeout: undefined,
-            dataSource: {
-                load: function() {
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        d.resolve(array);
-                    });
-
-                    return d.promise();
-                }
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            grouping: {
-                autoExpandAll: false,
-            },
-            groupPanel: {
-                visible: true
-            },
-            paging: {
-                pageSize: 10
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        dataGrid.getScrollable().scrollTo({ top: 500 });
-        this.clock.tick();
-
-        dataGrid.columnOption('group', 'groupIndex', 0);
-        this.clock.tick();
-
-        // assert
-        const visibleRows = dataGrid.getVisibleRows();
-        assert.equal(visibleRows.length, 8, 'visible row count');
-        assert.deepEqual(visibleRows[0].key, ['group1'], 'first visible row key');
-        assert.deepEqual(visibleRows[7].key, ['group8'], 'last visible row key');
-    });
-
-    const realSetTimeout = window.setTimeout;
-
-    QUnit.test('ungrouping after grouping should works correctly if row rendering mode is virtual', function(assert) {
-        if(browser.msie) {
-            assert.ok(true, 'This test is unstable in IE/Edge');
-            return;
-        }
-        this.clock.restore();
-        const done = assert.async();
-        // arrange, act
-        const array = [];
-
-        for(let i = 1; i <= 25; i++) {
-            array.push({ id: i, group: 'group' + (i % 8 + 1) });
-        }
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 400,
-            loadingTimeout: undefined,
-            keyExpr: 'id',
-            dataSource: array,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                updateTimeout: 0,
-                useNative: false
-            },
-            grouping: {
-                autoExpandAll: false,
-            },
-            groupPanel: {
-                visible: true
-            },
-            paging: {
-                pageSize: 10
-            }
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.getScrollable().scrollTo({ top: 500 });
-        dataGrid.columnOption('group', 'groupIndex', 0);
-
-        // assert
-        let visibleRows = dataGrid.getVisibleRows();
-        assert.equal(visibleRows.length, 8, 'visible row count');
-        assert.deepEqual(visibleRows[0].key, ['group1'], 'first visible row key');
-        assert.deepEqual(visibleRows[7].key, ['group8'], 'last visible row key');
-
-        // act
-        realSetTimeout(function() {
-            dataGrid.columnOption('group', 'groupIndex', undefined);
-
-            // assert
-            visibleRows = dataGrid.getVisibleRows();
-            assert.deepEqual(visibleRows[0].key, 1, 'first visible row key');
-            done();
-        });
-    });
-
-    // T644981
-    QUnit.test('ungrouping after grouping and scrolling should works correctly with large amount of data if row rendering mode is virtual', function(assert) {
-        this.clock.restore();
-        const done = assert.async();
-        // arrange, act
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: {
-                key: 'id',
-                group: 'group',
-                load: function(options) {
-                    const result = { data: [], totalCount: 1000000, groupCount: 1000 };
-
-                    for(let i = options.skip; i < options.skip + options.take; i++) {
-                        if(options.group) {
-                            result.data.push({ key: i + 1, items: null, count: 1000 });
-                        } else {
-                            result.data.push({ id: i + 1, group: (i % 1000 + 1) });
-                        }
-                    }
-
-                    return $.Deferred().resolve(result);
-                }
-            },
-            remoteOperations: { groupPaging: true },
-            height: 400,
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                updateTimeout: 0,
-                timeout: 0,
-                useNative: false
-            },
-            grouping: {
-                autoExpandAll: false
-            },
-            groupPanel: {
-                visible: true
-            },
-            paging: {
-                pageSize: 100
-            },
-            columns: ['id', 'group']
-        }).dxDataGrid('instance');
-
-        const scrollable = dataGrid.getScrollable();
-        scrollable.scrollTo({ top: 1000000 });
-        const scrollTop = scrollable.scrollTop();
-
-        realSetTimeout(function() {
-            // act
-            dataGrid.clearGrouping();
-
-            // assert
-            assert.equal(scrollable.scrollTop(), scrollTop, 'scroll position is not changed');
-            assert.ok($(dataGrid.element()).find('.dx-virtual-row').first().height() <= dataGrid.getScrollable().scrollTop(), 'first virtual row is not in viewport');
-            assert.ok($(dataGrid.element()).find('.dx-virtual-row').last().position().top >= dataGrid.getScrollable().scrollTop(), 'second virtual row is not in viewport');
-            done();
-        });
-    });
-
-    QUnit.test('scrolling after ungrouping should works correctly with large amount of data if row rendering mode is virtual', function(assert) {
-    // arrange, act
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: {
-                key: 'id',
-                load: function(options) {
-                    const result = { data: [], totalCount: 1000000, groupCount: options.requireGroupCount ? 1000 : undefined };
-
-                    for(let i = options.skip || 0; i < (options.skip || 0) + options.take; i++) {
-                        if(options.group) {
-                            result.data.push({ key: i + 1, items: null, count: 1000 });
-                        } else {
-                            result.data.push({ id: i + 1, group: (i % 1000 + 1) });
-                        }
-                    }
-
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        d.resolve(result);
-                    }, 500);
-
-                    return d;
-                }
-            },
-            remoteOperations: { groupPaging: true },
-            height: 400,
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                updateTimeout: 0,
-                timeout: 0,
-                useNative: false
-            },
-            grouping: {
-                autoExpandAll: false
-            },
-            groupPanel: {
-                visible: true
-            },
-            paging: {
-                pageSize: 100
-            },
-            columns: ['id', { dataField: 'group',
-                cellTemplate: function($container, options) {
-                    $($container)
-                        .css('height', 100)
-                        .text(options.text);
-                }
-            }]
-        }).dxDataGrid('instance');
-
-        this.clock.tick(2000);
-
-        dataGrid.columnOption('group', 'groupIndex', 0);
-
-        this.clock.tick(2000);
-
-        dataGrid.getScrollable().scrollTo(1);
-
-        this.clock.tick(2000);
-
-        dataGrid.getScrollable().scrollTo(9000);
-
-        this.clock.tick(200);
-
-        dataGrid.getScrollable().scrollTo(11000);
-
-        // assert
-        assert.ok(dataGrid.getTopVisibleRowData().key > 110, 'top visible row is correct');
-        assert.ok($(dataGrid.element()).find('.dx-virtual-row').first().height() <= dataGrid.getScrollable().scrollTop(), 'first virtual row is not in viewport');
-        assert.ok($(dataGrid.element()).find('.dx-virtual-row').last().position().top >= dataGrid.getScrollable().scrollTop(), 'second virtual row is not in viewport');
-    });
-
-    function createRemoteDataSourceWithGroupPaging(arrayStore, key) {
-        return {
-            key,
-            load: function(options) {
-                const d = $.Deferred();
-                setTimeout(function() {
-                    const result = {};
-                    arrayStore.load(options).done(function(data) {
-                        result.data = data;
-
-                        if(options.group) {
-                            data.forEach(item => {
-                                item.count = item.items.length;
-                                item.items = null;
-                            });
-                        }
-                    });
-                    if(options.requireGroupCount) {
-                        arrayStore.load({ filter: options.filter, group: options.group }).done(function(groupedData) {
-                            result.groupCount = groupedData.length;
-                        });
-                    }
-                    if(options.requireTotalCount) {
-                        arrayStore.totalCount(options).done(function(totalCount) {
-                            result.totalCount = totalCount;
-                        });
-                    }
-
-                    d.resolve(result);
-                }, 10);
-
-                return d;
-            }
-        };
-    }
-
-    // T716207
-    QUnit.test('Filtering should works correctly if groupPaging is enabled and group is expanded', function(assert) {
-    // arrange
-
-        const arrayStore = new ArrayStore([
-            { id: 1, group: 'group', type: 1 },
-            { id: 2, group: 'group', type: 1 },
-            { id: 3, group: 'group', type: 1 },
-            { id: 4, group: 'group', type: 2 }
-        ]);
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: createRemoteDataSourceWithGroupPaging(arrayStore, 'id'),
-            remoteOperations: { groupPaging: true },
-            height: 400,
-            filterSyncEnabled: true,
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual'
-            },
-            grouping: {
-                autoExpandAll: false
-            },
-            paging: {
-                pageSize: 2
-            },
-            columns: [{
-                dataField: 'group',
-                groupIndex: 0
-            }, {
-                dataField: 'id'
-            }, {
-                dataField: 'type'
-            }]
-        }).dxDataGrid('instance');
-        this.clock.tick(100);
-
-        dataGrid.expandRow(['group']);
-        this.clock.tick(100);
-
-        // act
-        dataGrid.columnOption('type', 'filterValue', 1);
-        this.clock.tick(100);
-
-        // assert
-        assert.notOk(dataGrid.getDataSource().isLoading(), 'not loading');
-        assert.equal(dataGrid.getVisibleRows().length, 4, 'visible row count is correct');
-    });
-
-    // T641931
-    QUnit.test('Infinite scrolling should works correctly', function(assert) {
-    // arrange, act
-        const data = [];
-
-        for(let i = 0; i < 30; i++) {
-            data.push({ id: i + 1 });
-        }
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 500,
-            dataSource: data,
-            loadingTimeout: undefined,
-            scrolling: {
-                updateTimeout: 0,
-                useNative: false,
-                mode: 'infinite',
-                rowRenderingMode: 'virtual'
-            },
-            paging: {
-                pageSize: 10
-            }
-        }).dxDataGrid('instance');
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows().length, 20, 'visible rows');
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 1, 'top visible row');
-        assert.equal(dataGrid.$element().find('.dx-datagrid-bottom-load-panel').length, 1, 'bottom loading exists');
-
-        // act
-        dataGrid.getScrollable().scrollTo(10000);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows().length, 20, 'visible rows');
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 6, 'top visible row');
-        assert.equal(dataGrid.$element().find('.dx-datagrid-bottom-load-panel').length, 0, 'not bottom loading');
-    });
-
-    // T710048
-    QUnit.test('Current row position should not be changed after expand if scrolling mode is infinite', function(assert) {
-    // arrange, act
-        const data = [];
-
-        for(let i = 0; i < 100; i++) {
-            data.push({ id: i + 1 });
-        }
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 400,
-            dataSource: data,
-            keyExpr: 'id',
-            loadingTimeout: undefined,
-            scrolling: {
-                updateTimeout: 0,
-                useNative: false,
-                mode: 'infinite',
-                rowRenderingMode: 'virtual'
-            },
-            paging: {
-                pageSize: 50
-            }
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.getScrollable().scrollTo(10000);
-
-        const ROW_KEY = 50;
-
-        let $row = $(dataGrid.getRowElement(dataGrid.getRowIndexByKey(ROW_KEY)));
-
-        const currentRowTop = $row.position().top;
-
-        dataGrid.expandRow(ROW_KEY);
-
-        // assert
-        $row = $(dataGrid.getRowElement(dataGrid.getRowIndexByKey(ROW_KEY)));
-        assert.equal($row.position().top, currentRowTop, 'current row top is not changed');
-    });
-
-    QUnit.test('scroll position should not be changed after refresh', function(assert) {
-    // arrange, act
-        const data = [];
-
-        for(let i = 0; i < 50; i++) {
-            data.push({ id: i + 1 });
-        }
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 200,
-            dataSource: data,
-            loadingTimeout: undefined,
-            scrolling: {
-                updateTimeout: 0,
-                useNative: false,
-                mode: 'virtual',
-                rowRenderingMode: 'virtual'
-            },
-            paging: {
-                pageSize: 10
-            }
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.getScrollable().scrollTo(100);
-        dataGrid.refresh();
-
-        // assert
-        assert.roughEqual(dataGrid.getScrollable().scrollTop(), 100, 1.1, 'scroll top is not changed');
-    });
-
-    // T699304
-    QUnit.test('scroll should works correctly if row height and totalCount are large', function(assert) {
-    // arrange
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 500,
-            dataSource: {
-                load: function(options) {
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        const items = [];
-
-                        for(let i = options.skip; i < options.skip + options.take; i++) {
-                            items.push({ id: i + 1 });
-                        }
-                        d.resolve({ data: items, totalCount: 1000000 });
-                    });
-
-                    return d;
-                }
-            },
-            remoteOperations: true,
-            loadingTimeout: undefined,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                timeout: 0,
-                updateTimeout: 0,
-                useNative: false
-            },
-            paging: {
-                pageSize: 100
-            },
-            onRowPrepared: function(e) {
-                if(e.rowType === 'data') {
-                    $(e.rowElement).get(0).style.height = '200px';
-                }
-            }
-        }).dxDataGrid('instance');
-
-        // act
-        this.clock.tick(1000);
-        dataGrid.getScrollable().scrollTo(100000);
-        this.clock.tick(1000);
-
-        // assert
-        const topVisibleRowData = dataGrid.getTopVisibleRowData();
-        const visibleRows = dataGrid.getVisibleRows();
-
-        assert.ok(topVisibleRowData.id > 1, 'top visible row data is not first');
-        assert.ok(visibleRows[visibleRows.length - 1].data.id - topVisibleRowData.id > 3, 'rows in viewport are rendered');
-    });
-
-    // T750279
-    QUnit.test('scroll should works correctly if page size is small and totalCount are large', function(assert) {
-    // arrange
-
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            height: 600,
-            dataSource: {
-                load: function(options) {
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        const items = [];
-
-                        for(let i = options.skip; i < options.skip + options.take; i++) {
-                            items.push({ id: i + 1 });
-                        }
-                        d.resolve({ data: items, totalCount: 1000000 });
-                    });
-
-                    return d;
-                }
-            },
-            remoteOperations: true,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            paging: {
-                pageSize: 10
-            }
-        }).dxDataGrid('instance');
-
-        // act
-        this.clock.tick(1000);
-        dataGrid.getScrollable().scrollTo(100000);
-        this.clock.tick(1000);
-
-        // assert
-        const topVisibleRowData = dataGrid.getTopVisibleRowData();
-        const visibleRows = dataGrid.getVisibleRows();
-
-        assert.ok(topVisibleRowData.id > 1, 'top visible row data is not first');
-        assert.ok(visibleRows[visibleRows.length - 1].data.id - topVisibleRowData.id > 10, 'visible rows are in viewport');
-    });
-
-    // T878343
-    QUnit.test('cellValue should work correctly with virtual scrolling and row rendering', function(assert) {
-        if(devices.real().deviceType !== 'desktop') {
-            assert.ok(true, 'test is not actual for mobile devices');
-            return;
-        }
-
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: {
-                load: function(options) {
-                    const items = [];
-                    const deferred = $.Deferred();
-
-                    for(let i = options.skip; i < options.skip + options.take && i < 10000; i++) {
-                        items.push({ id: i + 1, field: `some${i}` });
-                    }
-
-                    setTimeout(() => {
-                        deferred.resolve({ data: items, totalCount: 10000 });
-                    }, 1000);
-
-                    return deferred;
-                }
-            },
-            height: 550,
-            remoteOperations: true,
-            showBorders: true,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual'
-            },
-            columns: [{
-                cellTemplate: function(element, info) {
-                    $('<div>')
-                        .appendTo(element)
-                        .dxCheckBox({
-                            onValueChanged: function(e) {
-                                const actualRowIdx = dataGrid.getRowIndexByKey(info.key);
-                                dataGrid.cellValue(actualRowIdx, 'field', 'new value');
-                            }
-                        });
-                },
-                width: 75
-            }, 'field']
-        });
-
-        this.clock.tick(2000);
-
-        // act
-        const scrollable = dataGrid.getScrollable();
-        scrollable.scrollBy(448);
-
-        this.clock.tick(1000);
-
-        scrollable.scrollBy(448);
-
-        this.clock.tick(1000);
-
-        const $checkBox = $(dataGrid.getRowElement(4)).find('.dx-checkbox');
-        $checkBox.trigger('dxpointerdown');
-        this.clock.tick();
-        $checkBox.trigger('dxclick');
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.cellValue(4, 'field'), 'new value', 'cell\'s value was changed');
-        assert.equal($(dataGrid.getCellElement(4, 1)).text(), 'new value', 'cell\'s text was changed');
-        assert.equal(scrollable.scrollTop(), 896, 'scrollTop');
-
-        const visibleRows = dataGrid.getVisibleRows();
-        assert.equal(visibleRows[0].data.id, 21, 'first visible row');
-        assert.equal(visibleRows[19].data.id, 40, 'last visible row');
-    });
-
-    // T830138
-    QUnit.test('Freespace row should not have huge height if rowRenderingMode is virtual and pageSize is large', function(assert) {
-    // arrange
-        const store = [];
-        for(let i = 0; i < 60; i++) {
-            store.push({
-                value: i
-            });
-        }
-
-        $('#dataGrid').dxDataGrid({
-            dataSource: store,
-            loadingTimeout: undefined,
-            scrolling: {
-                rowRenderingMode: 'virtual',
-            },
-            paging: {
-                pageSize: 40
-            }
-        });
-
-        // assert
-        assert.roughEqual($('.dx-freespace-row').height(), 0.5, 0.51, 'freespace height');
-    });
-});
 
 QUnit.module('Rendered on server', baseModuleConfig, () => {
 
@@ -7025,87 +2068,9 @@ QUnit.module('Rendered on server', baseModuleConfig, () => {
         assert.equal(dataGrid.getVisibleRows().length, 1, 'visible rows are filtered');
         assert.equal(dataGrid.$element().find('.dx-data-row').length, 1, 'filtered data rows are rendered');
     });
-
-    // T655083
-    QUnit.test('Virtual rows should be hidden after filtering if cellTemplate is asynchronous', function(assert) {
-        const items = [];
-        for(let i = 0; i < 100; i++) {
-            items.push({ id: i + 1 });
-        }
-
-        const dataGrid = createDataGrid({
-            height: 500,
-            dataSource: items,
-            scrolling: {
-                mode: 'virtual'
-            },
-            columns: [{
-                dataField: 'id',
-                cellTemplate: function($container, options) {
-                    setTimeout(function() {
-                        $('<div>').text(options.text).appendTo($container);
-                    });
-                }
-            }]
-        });
-
-        // act
-        this.clock.tick(300);
-
-        // assert
-        assert.equal(dataGrid.$element().find('.dx-virtual-row').length, 1, '1 virtual rows');
-
-        // act
-        dataGrid.columnOption('id', 'filterValue', '99');
-        this.clock.tick(300);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows().length, 1, '1 visible row');
-        assert.equal(dataGrid.$element().find('.dx-virtual-row').length, 0, 'no virtual rows');
-    });
 });
 
 QUnit.module('Async render', baseModuleConfig, () => {
-
-    QUnit.test('filterRow, command column and showEditorAlways column should render asynchronously if renderAsync is true', function(assert) {
-        let cellPreparedCells = [];
-
-        // act
-        createDataGrid({
-            dataSource: [{ id: 1, boolean: true }],
-            loadingTimeout: undefined,
-            renderAsync: true,
-            filterRow: {
-                visible: true
-            },
-            selection: {
-                mode: 'multiple'
-            },
-            onCellPrepared: function(e) {
-                cellPreparedCells.push(e.rowType + '-' + (e.column.command || e.column.dataField));
-            }
-        });
-
-
-        // assert
-        assert.deepEqual(cellPreparedCells, [
-            'header-id', 'header-boolean',
-            'filter-select', 'header-select',
-            'data-id'
-        ], 'synchronous cellPrepared calls');
-
-        // act
-        cellPreparedCells = [];
-        this.clock.tick();
-
-        // assert
-        assert.deepEqual(cellPreparedCells, [
-            'filter-id', 'filter-boolean', // filter row is async
-            'data-select', // command column is async
-            'data-boolean' // showEditorAlways column is async
-        ], 'asynchronous cellPrepared calls');
-    });
-
     QUnit.test('Template in columns.buttons should render asynchronously if column renderAsync is true (T876950)', function(assert) {
         let buttonTemplateCallCount = 0;
         const dataGrid = createDataGrid({
@@ -7198,7 +2163,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // B232542
     QUnit.test('dataSource change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ id: 1111 }]
@@ -7216,7 +2181,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T216940
     QUnit.test('dataSource change to equal instance', function(assert) {
-    // arrange, act
+        // arrange, act
 
         const dataSource = [{ id: 1 }];
 
@@ -7238,7 +2203,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T260011
     QUnit.test('dataSource change to null', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ id: 1111 }]
@@ -7263,7 +2228,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T405875
     QUnit.test('dataSource changing reset columns order when dataSource structure is changed', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ field1: 1, field3: 3 }]
@@ -7281,7 +2246,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('dataSource changing not reset columns order when dataSource structure is not changed', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ field1: 1, field2: 2 }]
@@ -7302,7 +2267,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T531189
     QUnit.test('noData should be hidden after assign dataSource and height', function(assert) {
-    // arrange, act
+        // arrange, act
 
         const dataGrid = createDataGrid({
             columns: ['id']
@@ -7324,31 +2289,9 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T231356
     QUnit.test('rtlEnabled change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
         });
-
-        // act
-        dataGrid.option('rtlEnabled', true);
-
-        // assert
-        assert.ok($(dataGrid.$element()).hasClass('dx-rtl'), 'dx-rtl class added');
-    });
-
-    // T628787
-    QUnit.test('rtlEnabled change after scroll', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: [{}, {}, {}, {}],
-            columns: ['test'],
-            height: 50,
-            loadingTimeout: undefined,
-            scrolling: {
-                useNative: false
-            }
-        });
-
-        dataGrid.getScrollable().scrollTo(10);
 
         // act
         dataGrid.option('rtlEnabled', true);
@@ -7359,7 +2302,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T288385
     QUnit.test('disabled change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
         });
 
@@ -7370,38 +2313,8 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.ok($(dataGrid.$element()).hasClass('dx-state-disabled'), 'dx-state-disabled class added');
     });
 
-    // T697860
-    QUnit.test('dataSource change with grouping and columns should force one loading only', function(assert) {
-    // arrange, act
-        const loadingSpy = sinon.spy();
-
-        const options = {
-            dataSource: new DataSource([{ field1: 1 }]),
-            columns: ['field1']
-        };
-
-        const dataGrid = createDataGrid(options);
-
-        this.clock.tick(0);
-
-        options.dataSource.store().on('loading', loadingSpy);
-
-        // act
-        options.dataSource = new DataSource([{ field1: 2 }]);
-        options.dataSource.store().on('loading', loadingSpy);
-        options.grouping = {};
-        options.paging = {};
-
-        dataGrid.option(options);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(loadingSpy.callCount, 1, 'loading called once');
-        assert.deepEqual(dataGrid.getVisibleRows()[0].data, { field1: 2 }, 'data is updated');
-    });
-
     QUnit.test('dataSource pageSize change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             dataSource: {
                 store: [{ id: 1111 }]
@@ -7420,7 +2333,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('columns change', function(assert) {
-    // arrange, act
+        // arrange, act
         let loadingCount = 0;
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
@@ -7452,43 +2365,9 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.equal(loadingCount, 1, 'one load only');
     });
 
-    // T722785
-    QUnit.test('columns change with changed column visibility if sorting is applied', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: [{}],
-            columns: ['FirstName', {
-                dataField: 'LastName',
-                visible: false
-            }]
-        });
-
-        this.clock.tick();
-
-        dataGrid.columnOption('FirstName', 'sortOrder', 'asc');
-        this.clock.tick();
-
-        // act
-        dataGrid.option({
-            dataSource: [{}],
-            columns: ['FirstName', {
-                dataField: 'LastName',
-                visible: true
-            }]
-        });
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.getVisibleColumns().length, 2, 'two visible columns');
-        assert.equal(dataGrid.getVisibleColumns()[0].sortOrder, 'asc', 'sortOrder for first column');
-        assert.equal($(dataGrid.element()).find('.dx-header-row .dx-sort-up').length, 1, 'one sort indicator is shown');
-        assert.equal($(dataGrid.element()).find('.dx-header-row').children().length, 2, 'two header cells');
-        assert.equal($(dataGrid.element()).find('.dx-data-row').children().length, 2, 'two data cells');
-    });
-
     // T365730
     QUnit.test('columns change to empty array', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ a: 1111, b: 222 }]
@@ -7510,7 +2389,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T388879
     QUnit.test('change columns at the time refresh the grid', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = createDataGrid({
             loadingTimeout: 100,
             dataSource: [{ column1: 1, column2: 2 }, { column1: 3, column2: 4 }],
@@ -7538,33 +2417,9 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.strictEqual($headerElements.first().text(), 'Column 3', 'text of the first header');
     });
 
-    // TODO this test without clock
-    // T197089
-    QUnit.test('group command column width after grouping column with showWhenGrouped', function(assert) {
-    // arrange
-    // act
-        const $dataGrid = $('#dataGridWithStyle').dxDataGrid({
-            dataSource: [{ field1: '1' }],
-            columnAutoWidth: true,
-            columns: [{ dataField: 'field1', showWhenGrouped: true }]
-        });
-
-        this.clock.tick();
-
-        // act
-        $dataGrid.dxDataGrid('instance').columnOption('field1', 'groupIndex', 0);
-
-        this.clock.tick();
-
-        // assert
-        const cols = $dataGrid.find('colgroup').first().children();
-
-        assert.ok(Math.abs(30 - cols.eq(0).width()) <= 1, 'grouped column width');
-    });
-
     // T196532
     QUnit.test('columns change when changed dataSource parameters', function(assert) {
-    // arrange, act
+        // arrange, act
         let loadingCount = 0;
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
@@ -7586,22 +2441,6 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         // assert
         assert.equal(loadingCount, 2, 'second load for apply sorting');
         assert.equal(dataGrid.getController('data').items()[0].data.b, 1);
-    });
-
-    // T708525
-    QUnit.test('change columns with grouping after dataSource change', function(assert) {
-        // arrange, act
-        const dataGrid = createDataGrid({});
-
-        // act
-        dataGrid.option('dataSource', [{ a: 1, b: 2 }]);
-        dataGrid.option('columns', ['a', { dataField: 'b', groupIndex: 0 }]);
-
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].rowType, 'group', 'first row type is group');
-        assert.equal(dataGrid.columnOption('b', 'groupIndex'), 0, 'column b is grouped');
     });
 
     QUnit.test('Column changes are applied while dataSource is loading (T895552)', function(assert) {
@@ -7636,349 +2475,8 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.equal(dataGrid.columnOption('b', 'groupIndex'), 0, 'column b is grouped');
     });
 
-    QUnit.test('Column\'s filterValue is applied at runtime (T898619)', function(assert) {
-        // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', 'name']
-        });
-        this.clock.tick();
-
-        // act
-        const filterValue = 'test2';
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValue }]);
-        this.clock.tick();
-        const visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValue);
-    });
-
-    QUnit.test('Column\'s filterValue is applied at runtime while dataSource is reloading (T898619)', function(assert) {
-        // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', 'name']
-        });
-        this.clock.tick();
-
-        // act
-        dataGrid.option('filterPanel.visible', true); // causes reloading a data source
-        const dataSource = dataGrid.getDataSource();
-
-        // assert
-        assert.ok(dataSource.isLoading(), 'dataSource is loading');
-
-        // act
-        const filterValue = 'test2';
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValue }]);
-        this.clock.tick();
-        const visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValue);
-    });
-
-    QUnit.test('Columns\'s selectedFilterOperation is applied at runtime (T898619)', function(assert) {
-        // arrange, act
-        const filterValue = 'test1';
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', { dataField: 'name', filterValue }]
-        });
-        this.clock.tick();
-        let visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValue);
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValue, selectedFilterOperation: '<>' }]);
-        this.clock.tick();
-        visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, 'test2');
-    });
-
-    QUnit.test('Columns\'s selectedFilterOperation is applied at runtime while dataSource is reloading (T898619)', function(assert) {
-        // arrange, act
-        const filterValue = 'test1';
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', { dataField: 'name', filterValue }]
-        });
-        this.clock.tick();
-        let visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValue);
-
-        // act
-        dataGrid.option('filterPanel.visible', true); // causes reloading a data source
-        const dataSource = dataGrid.getDataSource();
-
-        // assert
-        assert.ok(dataSource.isLoading(), 'dataSource is loading');
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValue, selectedFilterOperation: '<>' }]);
-        this.clock.tick();
-        visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, 'test2');
-    });
-
-    QUnit.test('Columns\'s allowFiltering is applied at runtime (T898619)', function(assert) {
-        // arrange, act
-        const filterValue = 'test1';
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', { dataField: 'name', filterValue }]
-        });
-        this.clock.tick();
-        let visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValue, allowFiltering: false }]);
-        this.clock.tick();
-        visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 2, 'two rows are displayed');
-    });
-
-    QUnit.test('Columns\'s allowFiltering is applied at runtime while dataSource is reloading (T898619)', function(assert) {
-        // arrange, act
-        const filterValue = 'test1';
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', { dataField: 'name', filterValue }]
-        });
-        this.clock.tick();
-        let visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-
-        // act
-        dataGrid.option('filterPanel.visible', true); // causes reloading a data source
-        const dataSource = dataGrid.getDataSource();
-
-        // assert
-        assert.ok(dataSource.isLoading(), 'dataSource is loading');
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValue, allowFiltering: false }]);
-        this.clock.tick();
-        visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 2, 'two rows are displayed');
-    });
-
-    QUnit.test('Columns\'s filterValues is applied at runtime (T898619)', function(assert) {
-        // arrange, act
-        const filterValues = ['test1'];
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', 'name']
-        });
-        this.clock.tick();
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValues }]);
-        this.clock.tick();
-        const visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValues[0]);
-    });
-
-    QUnit.test('Columns\'s filterValues is applied at runtime while dataSource is reloading (T898619)', function(assert) {
-        // arrange, act
-        const filterValues = ['test1'];
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', 'name']
-        });
-        this.clock.tick();
-
-        // act
-        dataGrid.option('filterPanel.visible', true); // causes reloading a data source
-        const dataSource = dataGrid.getDataSource();
-
-        // assert
-        assert.ok(dataSource.isLoading(), 'dataSource is loading');
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValues }]);
-        this.clock.tick();
-        const visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValues[0]);
-    });
-
-    QUnit.test('Columns\'s filterType is applied at runtime (T898619)', function(assert) {
-        // arrange, act
-        const filterValues = ['test1'];
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', { dataField: 'name', filterValues }]
-        });
-        this.clock.tick();
-        let visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValues[0]);
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValues, filterType: 'exclude' }]);
-        this.clock.tick();
-        visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, 'test2');
-    });
-
-    QUnit.test('Columns\'s filterType is applied at runtime while dataSource is reloading (T898619)', function(assert) {
-        // arrange, act
-        const filterValues = ['test1'];
-        const dataGrid = createDataGrid({
-            dataSource: {
-                store: {
-                    type: 'array',
-                    key: 'id',
-                    data: [
-                        { id: 1, name: 'test1' },
-                        { id: 2, name: 'test2' }
-                    ]
-                }
-            },
-            columns: ['id', { dataField: 'name', filterValues }]
-        });
-        this.clock.tick();
-        let visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, filterValues[0]);
-
-        // act
-        dataGrid.option('filterPanel.visible', true); // causes reloading a data source
-        const dataSource = dataGrid.getDataSource();
-
-        // assert
-        assert.ok(dataSource.isLoading(), 'dataSource is loading');
-
-        // act
-        dataGrid.option('columns', ['id', { dataField: 'name', filterValues, filterType: 'exclude' }]);
-        this.clock.tick();
-        visibleRows = dataGrid.getVisibleRows();
-
-        // assert
-        assert.equal(visibleRows.length, 1, 'a single row is displayed');
-        assert.equal(visibleRows[0].data.name, 'test2');
-    });
-
     QUnit.test('Toolbar update it\'s items only when corresponding options are change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             remoteOperations: { filtering: true, sorting: true, paging: true },
@@ -8018,85 +2516,8 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.equal(headerPanel._getToolbarOptions.callCount, 6, 'Toolbar items are updated after searchPanel options change');
     });
 
-    QUnit.test('search editor have not been recreated when search text is changed', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            remoteOperations: { filtering: true, sorting: true, paging: true },
-            searchPanel: {
-                visible: true,
-            },
-            dataSource: {
-                store: {
-                    type: 'array',
-                    data: [{ a: 1, b: 2 }, { a: 2, b: 1 }]
-                }
-            }
-        });
-        const searchEditor = $(dataGrid.$element()).find('.dx-datagrid-search-panel').dxTextBox('instance');
-        // act
-        dataGrid.option('searchPanel.text', '123');
-        // assert
-        assert.strictEqual(searchEditor.option('value'), '123');
-    });
-
-    // T744851
-    QUnit.test('search editor value should be changed when search text is changed if grid is rendered in toolbar', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            onToolbarPreparing: function(e) {
-                e.toolbarOptions.items.unshift({
-                    location: 'before',
-                    template: function() {
-                        return $('<div>').dxDataGrid({
-                            loadingTimeout: undefined,
-                            searchPanel: {
-                                visible: true
-                            }
-                        });
-                    }
-                });
-            },
-            searchPanel: {
-                visible: true,
-            },
-            dataSource: [{ a: 1, b: 2 }, { a: 2, b: 1 }]
-        });
-        const $searchEditors = $(dataGrid.$element()).find('.dx-datagrid-search-panel');
-
-        // act
-        dataGrid.option('searchPanel.text', '123');
-
-        // assert
-        assert.strictEqual($searchEditors.eq(0).dxTextBox('instance').option('value'), '', 'first search editor is not changed');
-        assert.strictEqual($searchEditors.eq(1).dxTextBox('instance').option('value'), '123', 'second search editor is changed');
-    });
-
-    QUnit.test('search editor have not been recreated on typing', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            remoteOperations: { filtering: true, sorting: true, paging: true },
-            searchPanel: {
-                visible: true,
-            },
-            dataSource: {
-                store: {
-                    type: 'array',
-                    data: [{ a: 1, b: 2 }, { a: 2, b: 1 }]
-                }
-            }
-        });
-        const searchEditor = $(dataGrid.$element()).find('.dx-datagrid-search-panel').dxTextBox('instance');
-        // act
-        searchEditor.option('value', '123');
-        // assert
-        assert.strictEqual(searchEditor, $(dataGrid.$element()).find('.dx-datagrid-search-panel').dxTextBox('instance'));
-    });
-
     QUnit.test('customizeColumns change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ a: 1111, b: 222 }],
@@ -8128,7 +2549,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('several options change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             commonColumnSettings: { allowSorting: false },
             loadingTimeout: undefined,
@@ -8152,7 +2573,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('paging change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: {
@@ -8177,7 +2598,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('paging change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: {
@@ -8207,7 +2628,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T677650
     QUnit.test('paging change if nested options are not changed', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: {
@@ -8236,7 +2657,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T121445
     QUnit.test('pager.allowedPageSizes change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: {
@@ -8258,7 +2679,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T121445
     QUnit.test('pager.visible change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             height: 100,
             loadingTimeout: undefined,
@@ -8280,7 +2701,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T121445
     QUnit.test('pager light-mode should be correct after change pageSize', function(assert) {
-    // arrange, act
+        // arrange, act
         const data = [];
         for(let i = 0; i < 11; ++i) {
             data.push({ value: i });
@@ -8312,147 +2733,9 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.notOk($('#dataGrid .dx-pager').hasClass('dx-light-mode'), 'is not light-mode');
     });
 
-    QUnit.test('scrolling change', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: [{ a: 1111, b: 222 }]
-        });
-
-        this.clock.tick();
-        // act
-        dataGrid.option('scrolling', {
-            mode: 'infinite'
-        });
-        this.clock.tick();
-        // assert
-        assert.ok(dataGrid.getController('data').viewportSize() > 0);
-        assert.ok(!dataGrid.getController('data').dataSource().requireTotalCount());
-    });
-
-    // T273187
-    QUnit.test('infinite scrolling after change height', function(assert) {
-    // arrange, act
-
-        const dataSource = [];
-        for(let i = 0; i < 50; i++) {
-            dataSource.push({ test: i });
-        }
-
-        $('#dataGrid').height(200);
-        const dataGrid = createDataGrid({
-            paging: {
-                pageSize: 5
-            },
-            scrolling: {
-                mode: 'infinite'
-            },
-            dataSource: dataSource
-        });
-
-        this.clock.tick();
-
-        const viewportSize = dataGrid.getController('data').viewportSize();
-        const itemCount = dataGrid.getController('data').items().length;
-
-        // act
-        $('#dataGrid').height(1000);
-        dataGrid.repaint();
-        this.clock.tick();
-
-        // assert
-        assert.ok(dataGrid.getController('data').viewportSize() > 0, 'viewport size more 0');
-        assert.ok(dataGrid.getController('data').viewportSize() > viewportSize, 'viewport size is changed');
-        assert.ok(dataGrid.getController('data').items().length > itemCount, 'item count is changed');
-    });
-
-    // T256314
-    QUnit.test('dataSource change when scrolling mode virtual', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            scrolling: { mode: 'virtual' },
-            dataSource: [{ test: 1 }, { test: 2 }]
-        });
-
-        this.clock.tick(300);
-
-        // act
-        dataGrid.option('dataSource', [{ test: 3 }, { test: 4 }]);
-        this.clock.tick();
-
-        // assert
-        assert.ok(dataGrid.getController('data').viewportSize() > 0, 'viewportSize is assigned');
-    });
-
-    // T176960
-    QUnit.test('scrolling mode change from infinite to virtual', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            height: 50,
-            paging: { pageSize: 2 },
-            scrolling: { mode: 'infinite' },
-            columns: ['test'],
-            dataSource: [{}, {}, {}, {}]
-        });
-
-        this.clock.tick();
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-bottom-load-panel').length, 1);
-        // act
-        dataGrid.option('scrolling.mode', 'virtual');
-
-        // assert
-        assert.ok($(dataGrid.$element()).find('.dx-datagrid-rowsview').height() > 0);
-        // act
-        this.clock.tick();
-        // assert
-        assert.ok($(dataGrid.$element()).find('.dx-datagrid-rowsview').height() > 0);
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-bottom-load-panel').length, 0);
-    });
-
-    QUnit.test('filterRow.visible change after clearFilter', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: [{ a: 1111, b: 222 }]
-        });
-
-        this.clock.tick();
-
-        // act
-        dataGrid.clearFilter();
-        dataGrid.option('filterRow.visible', true);
-
-        this.clock.tick();
-
-        // assert
-        assert.equal($(dataGrid.$element()).find('.dx-datagrid-filter-row').length, 1, 'filter row is rendered');
-
-        assert.strictEqual(dataGrid.getView('columnHeadersView')._requireReady, false, 'columnHeadersView requireReady is false');
-        assert.strictEqual(dataGrid.getView('rowsView')._requireReady, false, 'rowsView requireReady is false');
-    });
-
-    // T210836
-    QUnit.test('scrolling change after creating before data is rendered', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: [{ value: 1 }, { value: 2 }, { value: 3 }, { value: 4 }, { value: 5 }],
-            paging: {
-                pageSize: 3
-            }
-        });
-
-        // act
-        dataGrid.option({ scrolling: { mode: 'virtual' } });
-        this.clock.tick();
-
-        // assert
-        assert.deepEqual(dataGrid.getController('data').pageCount(), 2, 'pages count');
-        assert.deepEqual(dataGrid.getController('data').items().length, 5, 'items count');
-        assert.ok(!dataGrid.getView('pagerView').isVisible(), 'pager visibility');
-    });
-
-
     // T120699
     QUnit.test('showRowLines/showColumnLines change', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ a: 1111, b: 222 }]
@@ -8482,7 +2765,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('dataSource instance of DataSource', function(assert) {
-    // arrange, act
+        // arrange, act
         let errorMessage;
 
         logger.error = function(message) {
@@ -8508,7 +2791,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T221734
     QUnit.test('using dataSource instance after disposing DataGrid', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataSource = new DataSource({
             store: [{ id: 1111 }]
         });
@@ -8743,7 +3026,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T148740
     QUnit.test('Updating after changing the option', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = $('#dataGrid').dxDataGrid({
             columns: ['field1', 'field2'],
             dataSource: {
@@ -8772,60 +3055,9 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.equal(dataGrid._views.columnHeadersView.element().find('td').length, 1, 'count columns');
     });
 
-    QUnit.test('Correct update group panel items runtime', function(assert) {
-    // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            columns: ['field1', 'field2'],
-            groupPanel: { visible: true },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '3', field2: '4' }, { field1: '5', field2: '6' }]
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        dataGrid.columnOption(0, { groupIndex: 0 });
-        this.clock.tick();
-
-        // assert
-        const $groupPanelItems = $('#dataGrid').find('.dx-group-panel-item');
-
-        assert.equal($groupPanelItems.length, 1, 'count of group panel items');
-    });
-
-    QUnit.test('Check group panel items are draggable when toolbar items updated runtime', function(assert) {
-    // arrange
-        let renderCompletedCallCount = 0;
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            onInitialized: function(e) {
-                e.component.getView('headerPanel').renderCompleted.add(function() {
-                    renderCompletedCallCount++;
-                });
-            },
-            columns: [{ dataField: 'field1', groupIndex: 0 }, 'field2'],
-            groupPanel: { visible: true },
-            dataSource: {
-                store: [{ field1: '1', field2: '2' }, { field1: '3', field2: '4' }, { field1: '5', field2: '6' }]
-            }
-        }).dxDataGrid('instance');
-
-        this.clock.tick();
-
-        // act
-        const toolbar = dataGrid.$element().find('.dx-toolbar').dxToolbar('instance');
-        toolbar.option('items', toolbar.option('items'));
-        this.clock.tick();
-
-        // assert
-        const $groupPanelItems = $('#dataGrid').find('.dx-toolbar .dx-datagrid-drag-action');
-        assert.equal($groupPanelItems.length, 1, 'count of group panel items');
-        assert.equal(renderCompletedCallCount, 3, 'renderCompleted call count');
-    });
-
     // T113684
     QUnit.test('Height rows view = height content', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             height: 200,
             columns: ['field1', 'field2'],
@@ -8845,7 +3077,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('Height rows view auto when no height option', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             columns: ['field1', 'field2'],
             dataSource: {
@@ -8862,7 +3094,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('Assign column options', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             dataSource: [{ field1: '1', field2: '2' }]
         });
@@ -8877,7 +3109,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
     });
 
     QUnit.test('Assign column options with beginUpdate/endUpdate', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             dataSource: [{ field1: '1', field2: '2', field3: '3' }]
         });
@@ -8911,7 +3143,7 @@ QUnit.module('Assign options', baseModuleConfig, () => {
 
     // T427432
     QUnit.test('Assign grid option and refresh in beginUpdate/endUpdate', function(assert) {
-    // arrange, act
+        // arrange, act
         const $dataGrid = $('#dataGrid').dxDataGrid({
             selection: {
                 mode: 'multiple'
@@ -8939,132 +3171,9 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         assert.strictEqual($dataGrid.find('.dx-data-row').children().length, 2, 'data cells count');
     });
 
-    // T181974, T152353
-    QUnit.test('Reset last non-command column width when width 100% in style', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').css('width', '100%').dxDataGrid({
-            dataSource: [{ field1: '1', field2: '2', field3: '3', field4: '4', field5: '5' }],
-            groupPanel: {
-                visible: true
-            },
-            columns: [
-                {
-                    dataField: 'field1',
-                    width: 50
-                },
-                {
-                    dataField: 'field2',
-                    width: 100
-                }
-            ],
-            editing: {
-                mode: 'row',
-                allowUpdating: true
-            },
-            allowColumnReordering: true,
-            allowColumnResizing: true
-        });
-
-        // act
-        this.clock.tick();
-        const $cols = $dataGrid.find('colgroup').first().find('col');
-
-        // assert
-        assert.equal($cols.length, 3);
-        assert.equal($cols.get(0).style.width, '50px', 'first column width is not reset');
-        assert.equal($cols.get(1).style.width, 'auto', 'second column width is reset - this is last non-command column');
-        assert.notStrictEqual($cols.get(2).style.width, 'auto', 'command column width is not reset');
-        assert.equal($dataGrid.width(), $dataGrid.parent().width());
-    });
-
-    // T276049
-    QUnit.test('columnFixing.enabled change to false', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: [{ field1: '1', field2: '2', field3: '3', field4: '4', field5: '5' }],
-            columns: ['field1', 'field2'],
-            columnFixing: {
-                enabled: true
-            },
-            selection: {
-                mode: 'multiple'
-            }
-        });
-
-        this.clock.tick();
-
-        assert.equal($dataGrid.find('.dx-datagrid-rowsview table').length, 2, 'two rowsview tables');
-        assert.equal($dataGrid.dxDataGrid('instance').getView('rowsView').getTableElements().length, 2, 'two rowsview tables');
-
-        // act
-        $dataGrid.dxDataGrid('instance').option('columnFixing.enabled', false);
-
-        this.clock.tick();
-
-        // assert
-        assert.equal($dataGrid.find('.dx-datagrid-rowsview table').length, 1, 'one main rowsview table');
-        assert.equal($dataGrid.dxDataGrid('instance').getView('rowsView').getTableElements().length, 1, 'one main rowsview table');
-    });
-
-    // T445971
-    QUnit.test('Hide group panel and search panel when calculateDisplayValue is defined', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [
-                { field1: 1, field2: 'test1', field3: 'test2' },
-                { field1: 2, field2: 'test3', field3: 'test4' }
-            ],
-            columns: [{ dataField: 'field1', calculateDisplayValue: commonUtils.noop, groupIndex: 0 }, { dataField: 'field2', groupIndex: 1 }],
-            groupPanel: { visible: true }
-        });
-
-        // act
-        dataGrid.option({
-            groupPanel: {
-                visible: false
-            },
-            searchPanel: {
-                visible: false
-            }
-        });
-
-        // assert
-        const visibleColumns = dataGrid.getVisibleColumns();
-        assert.strictEqual(visibleColumns.length, 3, 'count column');
-        assert.strictEqual(visibleColumns[0].dataField, 'field1', 'dataField of the first column');
-        assert.strictEqual(visibleColumns[0].groupIndex, 0, 'groupIndex of the first column');
-        assert.strictEqual(visibleColumns[1].dataField, 'field2', 'dataField of the second column');
-        assert.strictEqual(visibleColumns[1].groupIndex, 1, 'groupIndex of the second column');
-    });
-
-    // T689294
-    QUnit.test('onContentReady when there is no dataSource and stateStoring is enabled', function(assert) {
-    // arrange
-        let contentReadyCallCount = 0;
-
-        // act
-        createDataGrid({
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {};
-                }
-            },
-            onContentReady: function() {
-                contentReadyCallCount++;
-            }
-        });
-        this.clock.tick();
-
-        // assert
-        assert.equal(contentReadyCallCount, 1);
-    });
-
     // T824018
     QUnit.test('The onOptionChanged event should be called once when changing column option', function(assert) {
-    // arrange
+        // arrange
         const onOptionChanged = sinon.spy();
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
@@ -9079,39 +3188,12 @@ QUnit.module('Assign options', baseModuleConfig, () => {
         // assert
         assert.strictEqual(onOptionChanged.callCount, 1, 'onOptionChanged is called once');
     });
-
-    // T837684
-    QUnit.test('There are no exceptions when changing a filterValue to an array and selectedFilterOperation to \'between\' for date column', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{ field: new Date(1992, 7, 6) }, { field: new Date(1992, 7, 9) }],
-            filterRow: { visible: true },
-            columns: [{ dataField: 'field', dataType: 'date' }]
-        });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 2, 'row count');
-
-        try {
-        // act
-            dataGrid.option('columns[0].filterValue', [new Date(1992, 7, 5), new Date(1992, 7, 7)]);
-            dataGrid.option('columns[0].selectedFilterOperation', 'between');
-
-            // assert
-            assert.ok(true, 'no exceptions');
-            assert.strictEqual(dataGrid.getVisibleRows().length, 1, 'row count');
-        } catch(e) {
-        // assert
-            assert.ok(false, 'exception');
-        }
-    });
 });
 
 QUnit.module('API methods', baseModuleConfig, () => {
 
     QUnit.test('get methods for grid without options', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = createDataGrid({});
 
         // act, assert
@@ -9122,7 +3204,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('begin custom loading', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ id: 1111 }]
@@ -9145,7 +3227,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T619196
     QUnit.test('begin custom loading and refresh', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             dataSource: [{ id: 1111 }]
         });
@@ -9174,7 +3256,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('begin custom loading without message', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ id: 1111 }]
@@ -9196,7 +3278,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('add column', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ id: 1111 }]
@@ -9209,27 +3291,8 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.equal($('#dataGrid').find('td').eq(1).find('.dx-datagrid-text-content').first().text(), 'Test Column');
     });
 
-    QUnit.test('Group row has correct text-align in RTL', function(assert) {
-    // arrange, act
-
-        const dataGrid = createDataGrid({
-            rtlEnabled: true,
-            loadingTimeout: undefined,
-            dataSource: {
-                store: [{ field1: '1', field2: '2', field3: '3', field4: '4', field5: '5' }]
-            },
-            columns: ['field1', 'field2', { dataField: 'field3', groupIndex: 0 }]
-        });
-        const groupedRows = $(dataGrid.$element()).find('.dx-group-row');
-        const cells = groupedRows.children();
-
-        // assert
-        assert.ok(groupedRows.length, 'We have grouped row');
-        assert.equal(cells.eq(1).css('textAlign'), 'right', 'Grouped cell has correct text-align');
-    });
-
     QUnit.test('expandAll', function(assert) {
-    // arrange, act
+        // arrange, act
         let expandAllGroupIndex;
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
@@ -9248,7 +3311,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('collapseAll', function(assert) {
-    // arrange, act
+        // arrange, act
         let collapseAllGroupIndex;
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
@@ -9266,57 +3329,9 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.equal(collapseAllGroupIndex, 1);
     });
 
-    // T152353
-    QUnit.test('Stretch column datagrid width when grouping columns', function(assert) {
-    // arrange
-        const $dataGrid = $('#dataGridWithStyle').dxDataGrid({
-            dataSource: [{ field1: '1', field2: '2', field3: '3', field4: '4', field5: '5' }],
-            groupPanel: {
-                visible: true
-            },
-            columns: [
-                {
-                    dataField: 'field1',
-                    width: 130
-                },
-                {
-                    dataField: 'field2'
-                },
-                {
-                    dataField: 'field3',
-                    groupIndex: 0
-                }
-            ],
-            allowColumnReordering: true,
-            allowColumnResizing: true
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-        const columnController = dataGrid.getController('columns');
-
-        this.clock.tick();
-        // act
-        const gridInitialWidth = $dataGrid.outerWidth();
-
-        columnController.moveColumn(2, 0, 'headers', 'group');
-        this.clock.tick();
-
-        const gridWidthAfterGrouping = $dataGrid.outerWidth();
-
-        columnController.moveColumn(0, 1, 'group', 'headers');
-        this.clock.tick();
-
-        const gridWidthAfterUngrouping = $dataGrid.outerWidth();
-
-        // assert
-        // TODO: if we set style or rule to grid's container, this asserts will be "equal" instead of "ok"
-        assert.equal(gridWidthAfterGrouping, gridInitialWidth, 'After grouping columns grid width equals initial grid width');
-        assert.equal(gridWidthAfterUngrouping, gridWidthAfterGrouping, 'After move one group column to grid, grid size equals than previous grouping');
-        assert.equal(gridWidthAfterUngrouping, gridInitialWidth);
-    });
-
     // B239291
     QUnit.test('component refresh', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ testField: 'TestValue' }]
@@ -9331,7 +3346,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('refresh', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: []
@@ -9345,31 +3360,6 @@ QUnit.module('API methods', baseModuleConfig, () => {
         });
 
         assert.ok(reloadResolved);
-    });
-
-    // T754759
-    QUnit.test('visible rows are not duplicated after dataSource reload when scrolling is virtual', function(assert) {
-    // arrange
-        const data = [];
-        for(let i = 0; i < 10; i++) {
-            data.push({ id: i });
-        }
-
-        const dataSource = new DataSource(data);
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            dataSource: dataSource,
-            height: 100,
-            remoteOperations: true,
-            scrolling: { mode: 'virtual' },
-            paging: { pageSize: 2 },
-            loadingTimeout: undefined
-        }).dxDataGrid('instance');
-
-        // act
-        dataSource.reload();
-
-        // assert
-        assert.deepEqual(dataGrid.getVisibleRows().map(item => item.data.id), [0, 1], 'visible row keys');
     });
 
     // T750728
@@ -9412,7 +3402,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T257132
     QUnit.test('refresh $.Callbacks memory leaks', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: []
@@ -9444,549 +3434,8 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.equal(addCallCount, removeCallCount, 'added call count equals removed call count');
     });
 
-    QUnit.test('loading count after refresh when scrolling mode virtual', function(assert) {
-    // arrange, act
-
-        const array = [];
-        for(let i = 0; i < 50; i++) {
-            array.push({ test: i });
-        }
-        let loadingCount = 0;
-        let contentReadyCount = 0;
-
-        const dataGrid = createDataGrid({
-            onContentReady: function() {
-                contentReadyCount++;
-            },
-            height: 100,
-            scrolling: {
-                mode: 'virtual'
-            },
-            dataSource: {
-                onChanged: function() {
-                    loadingCount++;
-                },
-                store: array
-            }
-        });
-
-        this.clock.tick(301);
-
-        assert.equal(loadingCount, 1, 'virtual scrolling load 1 page');
-        assert.equal(contentReadyCount, 1, 'contentReady is called once');
-
-        loadingCount = 0;
-        contentReadyCount = 0;
-
-        // act
-        dataGrid.refresh();
-        this.clock.tick();
-
-        // assert
-        assert.equal(loadingCount, 1, 'virtual scrolling load 1 page');
-        assert.equal(contentReadyCount, 1, 'contentReady is called once');
-    });
-
-    QUnit.test('column headers should be shown if scrolling mode virtual', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            height: 100,
-            dataSource: [{ id: 1 }],
-            loadPanel: {
-                enabled: true
-            },
-            onContentReady: function(e) {
-                e.component.option('loadPanel.enabled', false);
-            },
-            scrolling: {
-                mode: 'virtual'
-            },
-            editing: {
-                allowUpdating: true
-            },
-        });
-
-        this.clock.tick();
-
-        assert.equal(dataGrid.$element().find('.dx-header-row').length, 1, 'header row is rendered');
-    });
-
-    QUnit.test('contentReady should be fired asynchronously if scrolling mode is virtual', function(assert) {
-        let contentReadyCount = 0;
-        const array = [];
-        for(let i = 0; i < 50; i++) {
-            array.push({ test: i });
-        }
-        // arrange, act
-        const dataGrid = createDataGrid({
-            height: 100,
-            dataSource: array,
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            },
-            paging: {
-                pageSize: 5
-            }
-        });
-
-        this.clock.tick();
-
-        dataGrid.on('contentReady', function() {
-            contentReadyCount++;
-        });
-
-        // act
-        dataGrid.getScrollable().scrollTo({ left: 0, top: 1000 });
-
-        // assert
-        assert.equal(contentReadyCount, 0, 'contentReady is not fired');
-
-        // act
-        this.clock.tick(301);
-
-        // assert
-        assert.equal(contentReadyCount, 1, 'contentReady is fired asynchronously');
-    });
-
-    QUnit.test('synchronous render and asynchronous updateDimensions during paging if virtual scrolling is enabled', function(assert) {
-    // arrange, act
-
-        let contentReadyCount = 0;
-        const array = [];
-        for(let i = 0; i < 50; i++) {
-            array.push({ test: i });
-        }
-        const dataGrid = createDataGrid({
-            onContentReady: function() {
-                contentReadyCount++;
-            },
-            height: 100,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            },
-            paging: {
-                pageSize: 5
-            },
-            dataSource: {
-                store: array
-            }
-        });
-
-        this.clock.tick();
-
-        const resizingController = dataGrid.getController('resizing');
-
-        sinon.spy(resizingController, 'updateDimensions');
-
-        contentReadyCount = 0;
-
-        // act
-        dataGrid.pageIndex(5);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows().length, 10, 'row count');
-        assert.equal(dataGrid.getVisibleRows()[0].data.test, 25, 'top visible row');
-        assert.equal(resizingController.updateDimensions.callCount, 0, 'updateDimensions is not called');
-        assert.equal(contentReadyCount, 0, 'contentReady is called not called');
-
-        // act
-        this.clock.tick(300);
-
-        // assert
-        assert.equal(resizingController.updateDimensions.callCount, 1, 'updateDimensions is called with timeout');
-        assert.equal(contentReadyCount, 1, 'contentReady is called with timeout');
-    });
-
-
-    const createLargeDataSource = function(count) {
-        return {
-            load: function(options) {
-                const items = [];
-                for(let i = options.skip; i < options.skip + options.take && i < count; i++) {
-                    items.push({ id: i + 1 });
-                }
-                return $.Deferred().resolve({ data: items, totalCount: count });
-            }
-        };
-    };
-
-
-    QUnit.test('scroll position should not be changed after change sorting if row count is large and virtual scrolling is enabled', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: createLargeDataSource(1000000),
-            remoteOperations: true,
-            height: 500,
-            onRowPrepared: function(e) {
-                $(e.rowElement).css('height', 50);
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            }
-        });
-
-        this.clock.tick(300);
-
-        dataGrid.pageIndex(1000);
-        this.clock.tick(300);
-        const scrollTop = dataGrid.getScrollable().scrollTop();
-
-        // act
-        dataGrid.columnOption('id', 'sortOrder', 'desc');
-        this.clock.tick(300);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 20 * 1000 + 1, 'first visible row is correct');
-        assert.equal(dataGrid.getScrollable().scrollTop(), scrollTop, 'scroll top is not changed');
-    });
-
-    // T838096
-    QUnit.test('group position should not be changed after expanding if virtual scrolling is enabled', function(assert) {
-    // arrange, act
-        const data = [
-            { id: 1, group: 1 },
-            { id: 2, group: 1 },
-            { id: 3, group: 1 },
-            { id: 4, group: 1 },
-            { id: 5, group: 1 },
-            { id: 6, group: 1 },
-            { id: 7, group: 1 },
-            { id: 8, group: 1 },
-            { id: 9, group: 1 },
-            { id: 10, group: 1 },
-            { id: 11, group: 2 }
-        ];
-
-        const dataGrid = createDataGrid({
-            height: 200,
-            keyExpr: 'id',
-            dataSource: data,
-            loadingTimeout: undefined,
-            paging: {
-                pageSize: 5
-            },
-            scrolling: {
-                mode: 'virtual',
-                useNative: false,
-                updateTimeout: 0
-            },
-            grouping: {
-                autoExpandAll: false
-            },
-            columns: ['id', {
-                dataField: 'group',
-                groupIndex: 0
-            }],
-            onRowPrepared: function(e) {
-                if(e.rowType === 'data') {
-                    $(e.rowElement).css('height', 50);
-                }
-            }
-        });
-
-        dataGrid.expandRow([1]);
-        dataGrid.getScrollable().scrollTo({ top: 10000 });
-
-        const getGroup2PositionTop = function() {
-            const $group2Element = $(dataGrid.getRowElement(dataGrid.getRowIndexByKey([2])));
-            return $group2Element.position().top;
-        };
-
-        const group2PositionTop = getGroup2PositionTop();
-
-        // act
-        dataGrid.expandRow([2]);
-
-        // assert
-        assert.ok(dataGrid.getRowIndexByKey(11) > 0, 'data item in last group is visible');
-        assert.ok(dataGrid.getScrollable().scrollTop() > 0, 'content is scrolled');
-        assert.ok(group2PositionTop, 'group 2 position is defined');
-        assert.roughEqual(getGroup2PositionTop(), group2PositionTop, 1, 'group 2 offset is not changed');
-    });
-
-    QUnit.test('top visible row should not be changed after refresh virtual scrolling is enabled without rowRenderingMode', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: createLargeDataSource(1000000),
-            remoteOperations: true,
-            height: 500,
-            onRowPrepared: function(e) {
-                $(e.rowElement).css('height', 50);
-            },
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            }
-        });
-
-        this.clock.tick(300);
-
-        dataGrid.pageIndex(1000);
-        this.clock.tick(300);
-        const topVisibleRowData = dataGrid.getTopVisibleRowData();
-
-        // act
-        dataGrid.refresh();
-        this.clock.tick(300);
-
-        // assert
-        assert.deepEqual(dataGrid.getTopVisibleRowData(), topVisibleRowData, 'top visible row is not changed');
-        assert.ok(dataGrid.getScrollable().scrollTop() > 0, 'content is scrolled');
-    });
-
-    QUnit.test('scroll to next page several times should works correctly if virtual scrolling is enabled', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            dataSource: createLargeDataSource(1000000),
-            remoteOperations: true,
-            showColumnHeaders: false,
-            height: 500,
-            onRowPrepared: function(e) {
-                $(e.rowElement).css('height', 50);
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            }
-        });
-
-        this.clock.tick(300);
-
-        const scrollable = dataGrid.getScrollable();
-
-        for(let pos = 101; pos <= 2501; pos += 100) {
-            scrollable.scrollTo(pos);
-            this.clock.tick(300);
-        }
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 51, 'first visible row is correct');
-        assert.equal(dataGrid.getVisibleRows().length, 20, 'visible rows');
-    });
-
-    QUnit.test('scroll to far should works correctly if rendering time is large and virtual scrolling and rendering are enabled', function(assert) {
-    // arrange, act
-        const clock = this.clock;
-        const dataGrid = createDataGrid({
-            dataSource: createLargeDataSource(1000),
-            remoteOperations: true,
-            height: 500,
-            onRowPrepared: function(e) {
-                $(e.rowElement).css('height', 50);
-                clock.tick(50);
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false
-            }
-        });
-
-        this.clock.tick(300);
-
-        // act
-        dataGrid.getScrollable().scrollTo(2500);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 1, 'first visible row is correct');
-
-        // act
-        this.clock.tick(300);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 51, 'first visible row is correct');
-    });
-
-    QUnit.test('scroll should be asynchronous if row rendering time is middle and virtual scrolling is enabled', function(assert) {
-    // arrange, act
-        const clock = this.clock;
-        const dataGrid = createDataGrid({
-            dataSource: createLargeDataSource(1000),
-            remoteOperations: true,
-            height: 500,
-            onRowPrepared: function(e) {
-                $(e.rowElement).css('height', 50);
-                clock.tick(5);
-            },
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            }
-        });
-
-        this.clock.tick(300);
-
-        // act
-        dataGrid.getScrollable().scrollTo(5000);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 1, 'first visible row is not changed');
-
-        // act
-        this.clock.tick(300);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 101, 'first visible row is correct');
-    });
-
-    QUnit.test('scroll should be synchronous if row rendering time is middle and virtual scrolling and rendering are enabled', function(assert) {
-    // arrange, act
-        const clock = this.clock;
-        const dataGrid = createDataGrid({
-            dataSource: createLargeDataSource(1000),
-            remoteOperations: true,
-            height: 500,
-            onRowPrepared: function(e) {
-                $(e.rowElement).css('height', 50);
-                clock.tick(5);
-            },
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'virtual',
-                useNative: false,
-                renderingThreshold: 10000
-            }
-        });
-
-        this.clock.tick(300);
-
-        // act
-        dataGrid.getScrollable().scrollTo(5000);
-
-        // assert
-        assert.equal(dataGrid.getVisibleRows()[0].data.id, 101, 'first visible row is changed');
-    });
-
-    QUnit.test('Duplicate rows should not be rendered if virtual scrolling enabled and column has values on second page only', function(assert) {
-    // arrange, act
-
-        const array = [];
-        for(let i = 1; i <= 20; i++) {
-            array.push({ id: i, text: i === 11 ? 'Test' : null });
-        }
-
-        const dataGrid = createDataGrid({
-            height: 400,
-            dataSource: array,
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'standard'
-            },
-            paging: {
-                pageSize: 10
-            }
-        });
-
-        // act
-        this.clock.tick();
-
-        // assert
-        const $dataRows = $(dataGrid.$element()).find('.dx-data-row');
-        assert.equal($dataRows.length, 20, 'rendered data row count');
-        assert.equal($dataRows.filter(':contains(Test)').length, 1, 'only one row contains text \'Test\'');
-    });
-
-    // T307737
-    QUnit.test('scroll position after refresh with native scrolling', function(assert) {
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 100,
-            scrolling: {
-                useNative: true
-            },
-            columnAutoWidth: true,
-            dataSource: [{ field1: 'test test test', field2: 'test test test', field3: 'test test test', field4: 'test test test' }]
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-
-        this.clock.tick();
-
-        const $scrollableContainer = $dataGrid.find('.dx-scrollable-container');
-
-        $scrollableContainer.scrollLeft(100);
-        $($scrollableContainer).trigger('scroll');
-
-        // act
-        dataGrid.updateDimensions();
-
-        // assert
-        assert.equal($scrollableContainer.scrollLeft(), 100);
-    });
-
-    QUnit.test('scrollLeft for columnHeadersView should be equal scrollLeft for rowsView (T307737, T861910)', function(assert) {
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 100,
-            scrolling: {
-                useNative: false
-            },
-            columnAutoWidth: true,
-            dataSource: [{ field1: 'test test test', field2: 'test test test', field3: 'test test test', field4: 'test test test' }]
-        });
-
-        this.clock.tick();
-
-        const scrollable = $dataGrid.find('.dx-scrollable').dxScrollable('instance');
-
-        // act
-        scrollable.scrollTo(100.7);
-
-        // assert
-        assert.equal(scrollable.scrollLeft(), 100.7);
-        assert.equal(scrollable._container().scrollLeft(), 100);
-
-        const $headersScrollable = $dataGrid.find('.dx-datagrid-headers' + ' .dx-datagrid-scroll-container').first();
-        assert.equal($headersScrollable.scrollLeft(), 100);
-    });
-
-    // T372552
-    QUnit.test('scroll must be updated after change column visibility', function(assert) {
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            width: 100,
-            scrolling: {
-                useNative: false
-            },
-            columnAutoWidth: true,
-            columns: [{
-                dataField: 'field1',
-                width: 100
-            }, {
-                dataField: 'field2',
-                width: 100
-            }, {
-                dataField: 'field3',
-                visible: false,
-                width: 50
-            }, {
-                dataField: 'field4',
-                width: 100
-            }],
-            dataSource: [{}]
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-
-        this.clock.tick();
-
-        const scrollable = $dataGrid.find('.dx-scrollable').dxScrollable('instance');
-
-        // act
-        scrollable.scrollTo(200);
-        dataGrid.columnOption('field3', 'visible', true);
-        this.clock.tick();
-
-        // assert
-        assert.equal(scrollable.scrollLeft(), 200);
-
-        const $headersScrollable = $dataGrid.find('.dx-datagrid-headers' + ' .dx-datagrid-scroll-container').first();
-        assert.equal($headersScrollable.scrollLeft(), 200);
-    });
-
     QUnit.test('getSelectedRowsData when storeSelectedItems enabled', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ testField: 'TestValue' }],
@@ -10001,7 +3450,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('pageCount', function(assert) {
-    // act
+        // act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: {
@@ -10018,7 +3467,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('columnCount', function(assert) {
-    // act
+        // act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: [{ field1: 1, field2: 2, field3: 3 }]
@@ -10031,32 +3480,8 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.equal(columnCount, 3, 'Column Count');
     });
 
-    QUnit.test('getCellElement', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columns: ['field1', 'field2', 'field3', { dataField: 'fixedField', fixed: true, fixedPosition: 'right' }],
-            dataSource: {
-                group: 'field3',
-                store: [
-                    { field1: 1, field2: 2, field3: 3, fixedField: 4 },
-                    { field1: 4, field2: 5, field3: 3, fixedField: 6 }
-                ]
-            }
-        });
-
-        // act, assert
-        assert.equal($(dataGrid.getCellElement(2, 'field2')).text(), '5', 'column by field name');
-        assert.equal($(dataGrid.getCellElement(2, 'fixedField')).text(), '6', 'column by field name for fixed column');
-        assert.equal($(dataGrid.getCellElement(2, 2)).text(), '5', 'column by visible index');
-        assert.equal($(dataGrid.getCellElement(2, 3)).text(), '6', 'column by visible index for fixed column');
-        assert.equal(dataGrid.getCellElement(5, 1), undefined, 'wrong rowIndex');
-        assert.equal(dataGrid.getCellElement(1, 'field5'), undefined, 'wrong column field name');
-        assert.equal(dataGrid.getCellElement(1, 100), undefined, 'wrong column visible index');
-    });
-
     QUnit.test('getRowElement', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             columns: ['field1', 'field2', 'field3'],
@@ -10075,55 +3500,8 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.deepEqual($rowElement[0], $('#dataGrid').find('.dx-datagrid-rowsview').find('tbody > tr')[1], 'correct row element');
     });
 
-    QUnit.test('getRowElement when there is fixed column', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columns: ['field1', 'field2', 'field3', { dataField: 'fixedField', fixed: true, fixedPosition: 'right' }],
-            dataSource: {
-                group: 'field3',
-                store: [
-                    { field1: 1, field2: 2, field3: 3, fixedField: 4 },
-                    { field1: 5, field2: 6, field3: 7, fixedField: 8 }
-                ]
-            }
-        });
-
-        // act, assert
-        const $rowElement = $(dataGrid.getRowElement(1));
-        assert.equal($rowElement.length, 2, 'count row');
-        assert.deepEqual($rowElement[0], $('#dataGrid').find('.dx-datagrid-rowsview .dx-datagrid-content').not('.dx-datagrid-content-fixed').find('tbody > tr')[1], 'correct row element of the main table');
-        assert.deepEqual($rowElement[1], $('#dataGrid').find('.dx-datagrid-rowsview .dx-datagrid-content-fixed').find('tbody > tr')[1], 'correct row element of the fixed table');
-    });
-
-    QUnit.test('Scroll positioned correct with fixed columns', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            columnFixing: {
-                enabled: true
-            },
-            columns: [{ dataField: 'field1', width: 200 }, { dataField: 'field2', width: 200 }, { dataField: 'field3', width: 200 }, { dataField: 'fixedField', width: '200px', fixed: true, fixedPosition: 'right' }],
-            dataSource: {
-                store: [
-                    { field1: 1, field2: 2, field3: 3, fixedField: 4 },
-                    { field1: 4, field2: 5, field3: 3, fixedField: 6 }
-                ]
-            },
-            width: 400
-        });
-
-        // act
-
-        dataGrid.focus($(dataGrid.getCellElement(0, 2)));
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.getView('rowsView').getScrollable().scrollLeft(), 400, 'Correct offset');
-    });
-
     QUnit.test('There is no console errors when call getCellElement at command column\'s cell', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             columns: [{ dataField: 'field1' }],
@@ -10165,7 +3543,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Should update grid after error row rendered (T755293)', function(assert) {
-    // arrange act
+        // arrange act
         const eventArray = [];
         const dataGrid = createDataGrid({
             columns: [{ dataField: 'field1', fixed: true }, { dataField: 'field2' }],
@@ -10193,120 +3571,9 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.equal(eventArray[2], 'onContentReady', 'onContentReady event fired after closing error row');
     });
 
-    // T648744
-    QUnit.test('Scrollbar should not be shown if column hiding is enabled and all columns are visible', function(assert) {
-    // arrange, act
-        if(browser.webkit) {
-            $('#container').css('zoom', 1.25);
-        }
-
-        const dataGrid = createDataGrid({
-            width: '700.1px',
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            columnAutoWidth: true,
-            columnHidingEnabled: true,
-            columns: [{
-                cellTemplate: function($container) { $($container).css('width', '129.6px'); }
-            }, {
-                cellTemplate: function($container) { $($container).css('width', '96.8px'); }
-            }, {
-                cellTemplate: function($container) { $($container).css('width', '104px'); }
-            }, {
-                cellTemplate: function($container) { $($container).css('width', '111.2px'); }
-            }]
-        });
-
-        // assert
-        const scrollable = dataGrid.getScrollable();
-        assert.equal(scrollable.$content().width(), scrollable._container().width(), 'no scrollbar');
-    });
-
-    QUnit.test('Column hiding should work if the last not fixed column was hiden with redundant space when columnAutoWidth is true and columns has minWidth (T656342)', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            width: 200,
-            dataSource: [{ C0: 0, C1: 1, C2: 2 }],
-            columnHidingEnabled: true,
-            columnAutoWidth: true,
-            showColumnHeaders: false,
-            columns: [
-                { dataField: 'C0', minWidth: 100, fixed: true },
-                { dataField: 'C1', minWidth: 100 },
-                { dataField: 'C2', minWidth: 100 }
-            ]
-        });
-
-        this.clock.tick();
-
-        const columns = dataGrid.getController('columns').getVisibleColumns();
-        const adaptiveColumnWidth = columns[3].visibleWidth;
-
-        // assert
-        assert.equal(columns[0].visibleWidth + adaptiveColumnWidth, 200, 'width of the 1st and last columns');
-        assert.equal(columns[1].visibleWidth, 'adaptiveHidden', '2nd column is hidden');
-        assert.equal(columns[2].visibleWidth, 'adaptiveHidden', '3rd column is hidden');
-    });
-
-    // T726366
-    QUnit.test('Column hiding should works correctly if all columns have width', function(assert) {
-    // arrange, act
-        const dataGrid = createDataGrid({
-            width: 300,
-            columnWidth: 100,
-            loadingTimeout: undefined,
-            columnHidingEnabled: true,
-            dataSource: [{}],
-            columns: ['field1', 'field2', 'field3', 'field4']
-        });
-
-        // assert
-        const visibleWidths = dataGrid.getVisibleColumns().map(column => column.visibleWidth);
-
-        assert.deepEqual(visibleWidths.length, 5, 'column count');
-        assert.deepEqual(visibleWidths[0], 100, 'column 1 has full width');
-        assert.deepEqual(visibleWidths[1], 'auto', 'column 2 has auto width');
-        assert.deepEqual(visibleWidths[2], 'adaptiveHidden', 'column 3 is hidden');
-        assert.deepEqual(visibleWidths[3], 'adaptiveHidden', 'column 4 is hidden');
-    });
-
-    [true, false].forEach(useLegacyKeyboardNavigation => {
-        QUnit.test(`keyboardNavigation "isValidCell" works well with handling of fixed "edit" command column if useLegacyKeyboardNavigation: ${useLegacyKeyboardNavigation}`, function(assert) {
-        // arrange, act
-            const dataGrid = createDataGrid({
-                loadingTimeout: undefined,
-                width: 300,
-                columns: [
-                    { dataField: 'field1', width: 200 },
-                    { dataField: 'field2', width: 200 },
-                    { dataField: 'field3', width: 50, fixed: true, fixedPosition: 'right' }
-                ],
-                editing: {
-                    allowUpdating: true,
-                    mode: 'row'
-                },
-                dataSource: {
-                    store: [
-                        { field1: 1, field2: 2, field3: 3 },
-                        { field1: 7, field2: 8, field3: 9 }
-                    ]
-                },
-                useLegacyKeyboardNavigation
-            });
-
-            const navigationController = dataGrid.getController('keyboardNavigation');
-            const fixedDataRow = dataGridWrapper.rowsView.getFixedDataRow(0);
-            const commandCell = fixedDataRow.getCommandCell(2);
-
-            // assert
-            const isValidEditCommandCell = !useLegacyKeyboardNavigation;
-            assert.equal(navigationController._isCellValid(commandCell.getElement()), isValidEditCommandCell, 'editCommand cell validation');
-        });
-    });
-
     // T172125
     QUnit.test('resize when all columns have width', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             columns: [
                 { dataField: 'field1', width: 50 },
@@ -10329,7 +3596,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T335767
     QUnit.test('skip columns synchronization on window resize when grid size is not changed', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             columns: [
                 { dataField: 'field1', width: 50 },
@@ -10359,7 +3626,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T372519
     QUnit.test('rowsView height is not changed on window resize when grid container is not visible', function(assert) {
-    // arrange, act
+        // arrange, act
 
         const dataGrid = createDataGrid({
             height: 500,
@@ -10388,7 +3655,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T196595
     QUnit.test('change pageIndex when all columns have width', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             paging: {
                 pageSize: 3
@@ -10413,583 +3680,9 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.ok($(dataGrid.$element()).width() < $('#qunit-fixture').width(), 'total width after change pageIndex');
     });
 
-    QUnit.test('Clear state when initial options defined', function(assert) {
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', sortOrder: 'desc' }, { dataField: 'field2' }, { dataField: 'field3' }],
-            dataSource: [],
-            columnChooser: { enabled: true },
-            paging: {
-                pageSize: 10
-            },
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {
-                        columns: [{ dataField: 'field1', visibleIndex: 0, visible: true }, { dataField: 'field2', visibleIndex: 1, visible: true }, { dataField: 'field3', visibleIndex: 2, visible: false }],
-                        pageSize: 40
-                    };
-                }
-            }
-
-        });
-
-        // act
-        this.clock.tick();
-
-        // assert
-        let visibleColumns = dataGrid.getController('columns').getVisibleColumns();
-        assert.equal(visibleColumns.length, 2, 'visible column count');
-        assert.equal(visibleColumns[0].sortOrder, undefined, 'field1 sortOrder');
-        assert.equal(dataGrid.pageSize(), 40, 'page size');
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick();
-
-        // assert
-        visibleColumns = dataGrid.getController('columns').getVisibleColumns();
-        assert.equal(visibleColumns.length, 3, 'visible column count');
-        assert.equal(visibleColumns[0].sortOrder, 'desc', 'field1 sortOrder');
-        assert.equal(visibleColumns[0].sortIndex, 0, 'field1 sortIndex');
-        assert.equal(dataGrid.pageSize(), 10, 'page size');
-    });
-
-    // T528181
-    QUnit.test('Change state when lookup column exists and remote data is used', function(assert) {
-        const createRemoteDataSource = function(data) {
-            return {
-                key: 'id',
-                load: function() {
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        d.resolve(data);
-                    }, 0);
-
-                    return d.promise();
-                }
-            };
-        };
-
-        const dataGrid = createDataGrid({
-            columns: [{
-                dataField: 'id',
-                lookup: {
-                    dataSource: createRemoteDataSource([ { id: 1, text: 'Test 1' } ]),
-                    valueExpr: 'id',
-                    displayExpr: 'text'
-                }
-            }],
-            dataSource: createRemoteDataSource([ { id: 1 } ])
-        });
-
-        // act
-        this.clock.tick(0);
-
-        // act
-        dataGrid.state({});
-        this.clock.tick(0);
-
-        // assert
-        const $firstCell = $($(dataGrid.$element()).find('.dx-data-row').eq(0).children().eq(0));
-        assert.equal($firstCell.text(), 'Test 1', 'Lookup text is correct');
-    });
-
-    // T721368
-    QUnit.test('Reset sorting and grouping state when lookup column exists and remote data is used', function(assert) {
-        const createRemoteDataSource = function(data) {
-            return {
-                key: 'id',
-                load: function() {
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        d.resolve(data);
-                    }, 0);
-
-                    return d.promise();
-                }
-            };
-        };
-
-        const dataGrid = createDataGrid({
-            columns: [{
-                dataField: 'id',
-                lookup: {
-                    dataSource: createRemoteDataSource([{ id: 1, text: 'Test 1' }]),
-                    valueExpr: 'id',
-                    displayExpr: 'text'
-                }
-            }, 'field1', 'field2'],
-            dataSource: [{ id: 1 }]
-        });
-
-        // act
-        this.clock.tick(0);
-
-        dataGrid.columnOption('field1', 'sortOrder', 'asc');
-        dataGrid.columnOption('field2', 'groupIndex', 0);
-
-        this.clock.tick(0);
-
-        dataGrid.state({});
-
-        this.clock.tick(0);
-
-        // assert
-        assert.strictEqual(dataGrid.columnOption('field1', 'sortOrder'), undefined, 'sorting is reseted');
-        assert.strictEqual(dataGrid.columnOption('field2', 'groupIndex'), undefined, 'grouping is reseted');
-    });
-
-    // T721368
-    QUnit.test('Reset sorting and grouping state when lookup column and default grouping and sorting exist and remote data is used', function(assert) {
-        const createRemoteDataSource = function(data) {
-            return {
-                key: 'id',
-                load: function() {
-                    const d = $.Deferred();
-
-                    setTimeout(function() {
-                        d.resolve(data);
-                    }, 0);
-
-                    return d.promise();
-                }
-            };
-        };
-
-        const dataGrid = createDataGrid({
-            columns: [{
-                dataField: 'id',
-                lookup: {
-                    dataSource: createRemoteDataSource([{ id: 1, text: 'Test 1' }]),
-                    valueExpr: 'id',
-                    displayExpr: 'text'
-                },
-                groupIndex: 0,
-                sortOrder: 'asc'
-            }, 'field1', 'field2'],
-            dataSource: [{ id: 1 }]
-        });
-
-        // act
-        this.clock.tick(0);
-
-        dataGrid.columnOption('field1', 'sortOrder', 'asc');
-        dataGrid.columnOption('field2', 'groupIndex', 1);
-        this.clock.tick(0);
-
-        // act
-        dataGrid.state({});
-        this.clock.tick(0);
-
-        // assert
-        assert.strictEqual(dataGrid.columnOption('id', 'sortOrder'), 'asc', 'sorting is reseted');
-        assert.strictEqual(dataGrid.columnOption('id', 'groupIndex'), 0, 'grouping is reseted');
-
-        assert.strictEqual(dataGrid.columnOption('field1', 'sortOrder'), undefined, 'sorting is reseted');
-        assert.strictEqual(dataGrid.columnOption('field2', 'groupIndex'), undefined, 'grouping is reseted');
-    });
-
-    // T800495
-    QUnit.test('The calculateCellValue arguments should be correct after resetting the state when there is a grouped column', function(assert) {
-    // arrange
-        const calculateCellValue = sinon.spy();
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', groupIndex: 0, calculateCellValue: calculateCellValue }, 'field2'],
-            dataSource: [{ field1: 'test1', field2: 'test2' }, { field1: 'test3', field2: 'test4' }]
-        });
-
-        this.clock.tick(0);
-        calculateCellValue.reset();
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.deepEqual(calculateCellValue.getCall(0).args[0], { field1: 'test1', field2: 'test2' }, 'calculateCellValue - first call arguments');
-    });
-
-    // T817555
-    QUnit.test('State reset should save default grouping', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', groupIndex: 0 }, 'field2'],
-            dataSource: [{ field1: 'test1', field2: 'test2' }, { field1: 'test3', field2: 'test4' }]
-        });
-
-        this.clock.tick(0);
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.columnOption(0, 'groupIndex'), 0, 'groupIndex was not reset');
-    });
-
-    // T817555
-    QUnit.test('State reset should save default grouping if sorting was applied', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', groupIndex: 0 }, { dataField: 'field2', sortOrder: 'asc' }],
-            dataSource: [{ field1: 'test1', field2: 'test2' }, { field1: 'test3', field2: 'test4' }]
-        });
-
-        this.clock.tick(0);
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.columnOption(0, 'groupIndex'), 0, 'groupIndex was not reset');
-    });
-
-    // T817555
-    QUnit.test('State reset should return default grouping and sorting after their changes', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', groupIndex: 0 }, { dataField: 'field2', sortOrder: 'asc' }],
-            dataSource: [{ field1: 'test1', field2: 'test2' }, { field1: 'test3', field2: 'test4' }]
-        });
-
-        this.clock.tick(0);
-
-        // act
-        dataGrid.columnOption(0, 'groupIndex', undefined);
-        dataGrid.columnOption(1, 'sortOrder', undefined);
-
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.columnOption(0, 'groupIndex'), 0, 'groupIndex was returned to default');
-        assert.equal(dataGrid.columnOption(1, 'sortOrder'), 'asc', 'sortOrder was returned to default');
-    });
-
-    // T817555
-    QUnit.test('Double reset should work correctly when rows are grouped', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', groupIndex: 0 }, { dataField: 'field2', sortOrder: 'asc' }],
-            dataSource: [{ field1: 'test1', field2: 'test2' }, { field1: 'test3', field2: 'test4' }]
-        });
-
-        this.clock.tick(0);
-
-        // act
-        dataGrid.columnOption(0, 'groupIndex', undefined);
-        dataGrid.columnOption(1, 'sortOrder', undefined);
-
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.columnOption(0, 'groupIndex'), 0, 'groupIndex was returned to default');
-        assert.equal(dataGrid.columnOption(1, 'sortOrder'), 'asc', 'sortOrder was returned to default');
-    });
-
-    // T818434
-    QUnit.test('State reset should reset filtering', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1' }, { dataField: 'field2' }],
-            filterPanel: { visible: true },
-            dataSource: [{ field1: 'test1', field2: 1 }, { field1: 'test2', field2: 2 }]
-        });
-        let filter;
-
-        this.clock.tick(0);
-
-        // act
-        filter = ['field1', '=', 'test1'];
-        dataGrid.option('filterValue', filter);
-
-        // assert
-        assert.deepEqual(dataGrid.option('filterValue'), filter, 'dataGrid\'s filter');
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.option('filterValue'), undefined, 'dataGrid\'s filter');
-
-        // act
-        filter = ['field2', '=', 1];
-        dataGrid.option('filterValue', filter);
-
-        // assert
-        assert.deepEqual(dataGrid.option('filterValue'), filter, 'dataGrid\'s filter');
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.option('filterValue'), undefined, 'dataGrid\'s filter');
-
-        // act
-        filter = [['field1', '=', 'test1'], 'and', ['field2', '=', 1]];
-        dataGrid.option('filterValue', filter);
-
-        // assert
-        assert.deepEqual(dataGrid.option('filterValue'), filter, 'dataGrid\'s filter');
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.option('filterValue'), undefined, 'dataGrid\'s filter');
-    });
-
-    // T817555
-    QUnit.test('State reset should return default grouping and sorting after multiple changes', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            columns: [{ dataField: 'field1', groupIndex: 0 }, { dataField: 'field2', sortOrder: 'asc' }],
-            dataSource: [{ field1: 'test1', field2: 'test2' }, { field1: 'test3', field2: 'test4' }]
-        });
-
-        this.clock.tick(0);
-
-        // act
-        dataGrid.columnOption(0, 'groupIndex', undefined);
-        dataGrid.columnOption(1, 'groupIndex', 0);
-
-        dataGrid.columnOption(1, 'sortOrder', undefined);
-        dataGrid.columnOption(0, 'sortOrder', 'asc');
-
-        dataGrid.state(null);
-        this.clock.tick(0);
-
-        // assert
-        assert.equal(dataGrid.columnOption(0, 'groupIndex'), 0, 'groupIndex was returned to default');
-        assert.equal(dataGrid.columnOption(1, 'groupIndex'), undefined, 'groupIndex was returned to default');
-
-        assert.equal(dataGrid.columnOption(0, 'sortOrder'), undefined, 'sortOrder was returned to default');
-        assert.equal(dataGrid.columnOption(1, 'sortOrder'), 'asc', 'sortOrder was returned to default');
-    });
-
-    // T832870
-    QUnit.test('onEditorPreparing event should not be fired twice for each column if state storing and filter row are used', function(assert) {
-        let onEditorPreparingCallCount = 0;
-
-        createDataGrid({
-            columns: [{ dataField: 'field1' }, { dataField: 'field2' }],
-            dataSource: [{ field1: 'data', field2: 'data2' }],
-            onEditorPreparing: function(e) {
-                onEditorPreparingCallCount++;
-            },
-            filterRow: {
-                visible: true
-            },
-            stateStoring: {
-                enabled: true
-            }
-        });
-
-        // act
-        this.clock.tick();
-
-        // assert
-        assert.equal(onEditorPreparingCallCount, 2, 'onEditorPreparing call count');
-    });
-
-    QUnit.test('Clear state when initial options is defined in dataSource', function(assert) {
-        const dataGrid = createDataGrid({
-            columnChooser: { enabled: true },
-            columns: [{ dataField: 'field1' }, { dataField: 'field2' }, { dataField: 'field3' }],
-            dataSource: {
-                sort: [{ selector: 'field1', desc: true }],
-                pageSize: 10,
-                store: []
-            },
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return {
-                        columns: [{ dataField: 'field1', visibleIndex: 0, visible: true }, { dataField: 'field2', visibleIndex: 1, visible: true }, { dataField: 'field3', visibleIndex: 2, visible: false }],
-                        pageSize: 40
-                    };
-                }
-            }
-
-        });
-
-        // act
-        this.clock.tick();
-
-        // assert
-        let visibleColumns = dataGrid.getController('columns').getVisibleColumns();
-        assert.equal(visibleColumns.length, 2, 'visible column count');
-        assert.equal(visibleColumns[0].sortOrder, undefined, 'field1 sortOrder');
-        assert.equal(visibleColumns[0].sortIndex, undefined, 'field1 sortIndex');
-        assert.equal(dataGrid.pageSize(), 40, 'page size');
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick();
-
-        // assert
-        visibleColumns = dataGrid.getController('columns').getVisibleColumns();
-        assert.equal(visibleColumns.length, 3, 'visible column count');
-        assert.equal(visibleColumns[0].sortOrder, 'desc', 'field1 sortOrder');
-        assert.equal(visibleColumns[0].sortIndex, 0, 'field1 sortIndex');
-        assert.equal(dataGrid.pageSize(), 10, 'page size');
-    });
-
-    QUnit.test('Reset pageIndex on clear state', function(assert) {
-        const dataGrid = createDataGrid({
-            columns: ['field1'],
-            dataSource: [{}, {}, {}],
-            paging: {
-                pageSize: 2
-            }
-        });
-
-        // act
-        this.clock.tick();
-        dataGrid.pageIndex(1);
-
-        // assert
-        assert.equal(dataGrid.pageIndex(), 1, 'pageIndex');
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.pageIndex(), 0, 'pageIndex');
-    });
-
-    // T721065
-    QUnit.test('Change pageIndex and pageSize via state if scrolling mode is virtual', function(assert) {
-        const dataGrid = createDataGrid({
-            height: 200,
-            columns: ['test'],
-            dataSource: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
-            paging: {
-                pageSize: 5,
-                pageIndex: 1
-            },
-            scrolling: {
-                mode: 'virtual'
-            },
-            pager: {
-                visible: true,
-                showPageSizeSelector: true,
-                allowedPageSizes: [2, 5]
-            }
-        });
-
-        this.clock.tick();
-
-        // act
-        dataGrid.state({ pageIndex: 0, pageSize: 2 });
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.pageIndex(), 0, 'pageIndex');
-        assert.equal(dataGrid.pageSize(), 2, 'pageSize');
-    });
-
-    // T735143
-    QUnit.test('Apply state with paging and filtering if filterPanel is visible', function(assert) {
-        const dataGrid = createDataGrid({
-            columns: ['id'],
-            dataSource: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
-            paging: {
-                pageSize: 2,
-                pageIndex: 1
-            },
-            filterPanel: {
-                visible: true
-            },
-            headerFilter: {
-                visible: true
-            },
-            filterRow: {
-                visible: true
-            }
-        });
-
-        this.clock.tick();
-
-        // act
-        dataGrid.state({ pageIndex: 1, pageSize: 2, filterValue: ['id', '<>', 1] });
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.pageIndex(), 1, 'pageIndex is applied');
-        assert.equal(dataGrid.getVisibleRows().length, 1, 'rows are filtered');
-    });
-
-    // T414555
-    QUnit.test('Apply state when search text and grouping are changed', function(assert) {
-        let loadingCount = 0;
-        const dataGrid = createDataGrid({
-            columns: [
-                'ID',
-                { dataField: 'Terms', groupIndex: 0 },
-                'Employee'
-            ],
-            dataSource: {
-                store: {
-                    type: 'array',
-                    data: [{
-                        'ID': 47,
-                        'Terms': '30 Days',
-                        'Employee': 'Clark Morgan'
-                    }],
-                    onLoading: function() {
-                        loadingCount++;
-                    }
-                }
-            },
-            stateStoring: {
-                ignoreColumnOptionNames: []
-            }
-        });
-
-        this.clock.tick();
-
-        assert.equal(dataGrid.columnOption('groupIndex:0').dataField, 'Terms', 'grouped column exists');
-
-        loadingCount = 0;
-
-        const strState = {
-            'columns': [
-                { 'visibleIndex': 0, 'dataField': 'ID', 'dataType': 'number', 'visible': true },
-                { 'visibleIndex': 1, 'dataField': 'Terms', 'dataType': 'string', 'visible': true, 'sortOrder': 'asc', 'sortIndex': 0 },
-                { 'visibleIndex': 2, 'dataField': 'Employee', 'dataType': 'string', 'visible': true }],
-            'searchText': 'A',
-            'pageIndex': 0,
-            'pageSize': 0,
-            'allowedPageSizes': []
-        };
-
-        // act
-        dataGrid.state(strState);
-        this.clock.tick();
-
-        // assert
-        assert.ok(!dataGrid.columnOption('groupIndex:0'), 'no grouped columns');
-        assert.equal(dataGrid.option('searchPanel.text'), 'A', 'search panel text is applied');
-        assert.equal(loadingCount, 1, 'loading count');
-    });
-
     // T296786
     QUnit.test('beginCustomLoading in onInitialized', function(assert) {
-    // arrange, act
+        // arrange, act
         let initialized;
         const dataGrid = createDataGrid({
             onInitialized: function(e) {
@@ -11010,7 +3703,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T461925
     QUnit.test('columnOption in onInitialized', function(assert) {
-    // arrange, act
+        // arrange, act
         let initialized;
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
@@ -11035,7 +3728,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T494138
     QUnit.test('Change expand column width in onInitialized', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             onInitialized: function(e) {
@@ -11052,25 +3745,8 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.equal($commandColumnCells.eq(0).width(), 15, 'expand command column width');
     });
 
-    // T508818
-    QUnit.test('Change sortOrder via columnOption when data is not loaded', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            dataSource: [{ a: 1 }, { a: 2 }],
-            columns: ['a']
-        });
-
-        // act
-        dataGrid.columnOption(0, 'sortOrder', 'desc');
-        this.clock.tick();
-
-        // assert
-        assert.equal(dataGrid.cellValue(0, 0), 2, 'first row value');
-        assert.equal(dataGrid.cellValue(1, 0), 1, 'second row value');
-    });
-
     QUnit.test('Repaint row', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11106,7 +3782,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Repaint rows', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11149,7 +3825,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Repaint rows with repaintChangesOnly', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11193,7 +3869,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Refresh with changesOnly', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11231,7 +3907,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Refresh with highlighting and check oldValue', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11297,7 +3973,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('highlighting works, if twoWayBinding is enabled and watchMethod is set', function(assert) {
-    // arrange
+        // arrange
         const callbacks = [];
         const dataSource = new DataSource({
             store: {
@@ -11350,7 +4026,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Refresh with changesOnly and cellTemplate', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11397,7 +4073,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Refresh with changesOnly and cellPrepared/rowPrepared', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11443,7 +4119,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Row alt classes and row indexes should be updated after refresh with changesOnly', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11477,7 +4153,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('Change dataSource to new with new item instances if repaintChangesOnly is true', function(assert) {
-    // arrange
+        // arrange
         const cellPreparedArgs = [];
         const rowPreparedArgs = [];
         const watchUpdateArgs = [];
@@ -11532,86 +4208,8 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.strictEqual(cellPreparedArgs[2].data, newItems[1], 'cellPrepared 2 data is updated');
     });
 
-    // T699807
-    QUnit.test('Change dataSource array during state loading', function(assert) {
-    // arrange
-        const stateDeferred = $.Deferred();
-        const dataGrid = createDataGrid({
-            stateStoring: {
-                enabled: true,
-                type: 'custom',
-                customLoad: function() {
-                    return stateDeferred;
-                }
-            },
-            keyExpr: 'id',
-            loadingTimeout: undefined,
-            repaintChangesOnly: true,
-            dataSource: [
-                { id: 1, field1: 'test1', detail: 'detail1' },
-                { id: 2, field1: 'test2', detail: 'detail2' }
-            ],
-            columns: ['id', 'field1']
-        });
-
-        this.clock.tick();
-
-        // act
-        const newItems = [
-            { id: 1, field1: 'test1', detail: 'detail1' },
-            { id: 2, field1: 'test2', detail: 'updated' }
-        ];
-
-        dataGrid.option('dataSource', newItems);
-        stateDeferred.resolve({});
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows()[1].data.detail, 'updated', 'row 1 data is updated');
-    });
-
-    // T720597
-    QUnit.test('Grouping and ungrouping', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            dataSource: [
-                { id: 1, col1: '1 1', col2: '1 2', col3: '1 3' },
-                { id: 2, col1: '2 1', col2: '2 2', col3: '2 3' },
-                { id: 3, col1: '3 1', col2: '3 2', col3: '3 3' }
-            ],
-            loadingTimeout: undefined,
-            paging: {
-                pageSize: 2
-            },
-            repaintChangesOnly: true,
-            scrolling: {
-                mode: 'virtual'
-            },
-            columns: [
-                { dataField: 'col1', showWhenGrouped: true },
-                { dataField: 'col2', showWhenGrouped: true },
-                { dataField: 'col3', showWhenGrouped: true }
-            ],
-            summary: {
-                groupItems: [{
-                    column: 'Col1',
-                    summaryType: 'count'
-                }]
-            }
-        });
-
-        // act
-        dataGrid.columnOption('col1', 'groupIndex', 0);
-        dataGrid.columnOption('col2', 'groupIndex', 1);
-        dataGrid.columnOption('col1', 'groupIndex', undefined);
-
-        // assert
-        assert.strictEqual($(dataGrid.element()).find('.dx-datagrid-headers td').length, 4, 'header cell count is correct');
-        assert.strictEqual($(dataGrid.getRowElement(0)).children().length, 2, 'data cell count for first group row is correct');
-        assert.strictEqual($(dataGrid.getRowElement(1)).children().length, 4, 'data cell count for second data row is correct');
-    });
-
     QUnit.test('watch in cellPrepared should works after push', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = createDataGrid({
             dataSource: {
                 store: {
@@ -11659,7 +4257,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
     });
 
     QUnit.test('oldValue argument should exists in cellPrepared after push', function(assert) {
-    // arrange
+        // arrange
         let cellPreparedArgs = [];
         const dataGrid = createDataGrid({
             dataSource: {
@@ -11695,72 +4293,8 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.equal(cellPreparedArgs[0].oldValue, 'test1', 'cell prepared oldValue');
     });
 
-    QUnit.test('Column widths should be updated after expand group row if repaintChangesOnly is true', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            keyExpr: 'id',
-            dataSource: [
-                { id: 1, group: 'group1' },
-                { id: 2, group: 'group1' },
-                { id: 3, group: 'group2' },
-                { id: 4, group: 'group2' }
-            ],
-            grouping: {
-                autoExpandAll: false
-            },
-            columns: ['id', {
-                dataField: 'group',
-                groupIndex: 0
-            }],
-            repaintChangesOnly: true
-        });
-
-        dataGrid.expandRow(['group1']);
-
-        // assert
-        assert.equal(dataGrid.getVisibleColumns()[0].visibleWidth, 30, 'visibleWidth for first groupExpand column');
-    });
-
-    QUnit.test('push changes for adaptive row', function(assert) {
-    // arrange
-        const dataSource = new DataSource({
-            pushAggregationTimeout: 0,
-            store: {
-                type: 'array',
-                key: 'id',
-                data: [
-                    { id: 1, field1: 'test1' },
-                    { id: 2, field1: 'test2' },
-                    { id: 3, field1: 'test3' },
-                    { id: 4, field1: 'test4' }
-                ]
-            }
-        });
-        const dataGrid = createDataGrid({
-            width: 100,
-            columnWidth: 100,
-            columnHidingEnabled: true,
-            repaintChangesOnly: true,
-            loadingTimeout: undefined,
-            keyExpr: 'id',
-            dataSource: dataSource
-        });
-
-
-        dataGrid.expandAdaptiveDetailRow(2);
-
-        const $cell = $(dataGrid.getCellElement(2, 1));
-
-        // act
-        dataGrid.getDataSource().store().push([{ type: 'update', key: 2, data: { field1: 'test updated' } }]);
-
-        // assert
-        assert.strictEqual($cell.text(), 'test updated', 'field1 text is updated');
-    });
-
     QUnit.test('Refresh with changesOnly and summary', function(assert) {
-    // arrange
+        // arrange
         const dataSource = new DataSource({
             store: {
                 type: 'array',
@@ -11801,386 +4335,9 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.strictEqual($updatedCellElements.eq(1).text(), 'Sum: 500', 'cell value is updated');
     });
 
-    QUnit.test('Refresh with changesOnly for fixed columns', function(assert) {
-    // arrange
-        const dataSource = new DataSource({
-            store: {
-                type: 'array',
-                key: 'id',
-                data: [
-                    { id: 1, field1: 1, field2: 2, field3: 3, field4: 4 }
-                ]
-            }
-        });
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: dataSource,
-            columns: [
-                { dataField: 'field1', fixed: true },
-                { dataField: 'field2' },
-                { dataField: 'field3' },
-                { dataField: 'field4', fixed: true, fixedPosition: 'right' }
-            ]
-        });
-
-        const $firstCell = $(dataGrid.getCellElement(0, 0));
-        const $secondCell = $(dataGrid.getCellElement(0, 1));
-        const $lastCell = $(dataGrid.getCellElement(0, 3));
-
-        dataSource.store().update(1, { field1: 8, field4: 9 });
-
-        // act
-        dataGrid.refresh(true);
-
-        // assert
-        assert.notOk($(dataGrid.getCellElement(0, 0)).is($firstCell), 'first cell is changed');
-        assert.ok($(dataGrid.getCellElement(0, 1)).is($secondCell), 'second cell is not changed');
-        assert.notOk($(dataGrid.getCellElement(0, 3)).is($lastCell), 'last cell is changed');
-        assert.strictEqual($(dataGrid.getCellElement(0, 0)).text(), '8', 'first cell value is updated');
-        assert.strictEqual($(dataGrid.getCellElement(0, 3)).text(), '9', 'last cell value is updated');
-    });
-
-    QUnit.test('Push with reshape and repaintChangesOnly if scrolling mode is virtual', function(assert) {
-    // arrange
-        const data = [
-            { id: 1, name: 'test 1' },
-            { id: 2, name: 'test 2' },
-            { id: 3, name: 'test 3' },
-            { id: 4, name: 'test 4' },
-            { id: 5, name: 'test 5' }
-        ];
-
-        const dataSource = new DataSource({
-            store: {
-                type: 'array',
-                key: 'id',
-                data: data
-            },
-            reshapeOnPush: true,
-            pushAggregationTimeout: 0
-        });
-        const dataGrid = createDataGrid({
-            height: 50,
-            loadingTimeout: undefined,
-            repaintChangesOnly: true,
-            scrolling: {
-                mode: 'virtual',
-                updateTimeout: 0
-            },
-            paging: {
-                pageSize: 2
-            },
-            dataSource: dataSource,
-            columns: ['id', 'name']
-        });
-
-        const $firstCell = $(dataGrid.getCellElement(1, 0));
-        const $secondCell = $(dataGrid.getCellElement(1, 1));
-
-
-        // act
-        dataSource.store().push([{ type: 'update', key: 2, data: { name: 'updated' } }]);
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 2, 'visible rows');
-        assert.ok($(dataGrid.getCellElement(1, 0)).is($firstCell), 'first cell is not recreated');
-        assert.notOk($(dataGrid.getCellElement(1, 1)).is($secondCell), 'second cell is recreated');
-        assert.strictEqual($(dataGrid.getCellElement(1, 1)).text(), 'updated', 'second cell value is updated');
-    });
-
-    // T711198
-    QUnit.test('Push insert with reshape and repaintChangesOnly if rowRenderingMode is virtual', function(assert) {
-    // arrange
-        const data = [
-            { id: 1, name: 'test 1' },
-            { id: 2, name: 'test 2' },
-            { id: 3, name: 'test 3' },
-            { id: 4, name: 'test 4' },
-            { id: 5, name: 'test 5' }
-        ];
-
-        const dataSource = new DataSource({
-            store: {
-                type: 'array',
-                key: 'id',
-                data: data
-            },
-            reshapeOnPush: true
-        });
-        const dataGrid = createDataGrid({
-            height: 50,
-            loadingTimeout: undefined,
-            repaintChangesOnly: true,
-            scrolling: {
-                rowRenderingMode: 'virtual',
-                updateTimeout: 0
-            },
-            dataSource: dataSource,
-            columns: ['id', 'name']
-        });
-
-        this.clock.tick();
-
-        // act
-        dataSource.store().push([{ type: 'insert', data: { id: 6, name: 'test 6' } }]);
-        this.clock.tick();
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 6, 'one row is added');
-        assert.strictEqual(dataGrid.getVisibleRows()[5].key, 6, 'added row key is correct');
-    });
-
-    QUnit.test('Push without reshape should not force load if scrolling mode is virtual', function(assert) {
-    // arrange
-        const data = [
-            { id: 1, name: 'test 1' },
-            { id: 2, name: 'test 2' },
-            { id: 3, name: 'test 3' },
-            { id: 4, name: 'test 4' },
-            { id: 5, name: 'test 5' }
-        ];
-
-        let loadingCount = 0;
-
-        const arrayStore = new ArrayStore({
-            key: 'id',
-            data: data,
-            onLoading: function() {
-                loadingCount++;
-            }
-        });
-
-        const dataGrid = createDataGrid({
-            height: 50,
-            loadingTimeout: undefined,
-            repaintChangesOnly: true,
-            scrolling: {
-                mode: 'virtual',
-                updateTimeout: 0
-            },
-            remoteOperations: true,
-            cacheEnabled: false,
-            paging: {
-                pageSize: 2
-            },
-            dataSource: {
-                store: arrayStore,
-                pushAggregationTimeout: 0
-            },
-            columns: ['id', 'name']
-        });
-
-        // assert
-        assert.strictEqual(loadingCount, 1, 'loadingCount after init');
-
-        // act
-        arrayStore.push([{ type: 'update', key: 2, data: { name: 'updated' } }]);
-
-        // assert
-        assert.strictEqual(loadingCount, 1, 'loadingCount is not changed after push');
-        assert.strictEqual($(dataGrid.getCellElement(1, 1)).text(), 'updated', 'second cell value is updated');
-    });
-
-    // T443177
-    QUnit.test('Show searchPanel via option method', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({});
-
-        // act
-        dataGrid.option('searchPanel.visible', true);
-
-        // assert
-        const $headerPanelElement = $($(dataGrid.$element()).find('.dx-datagrid-header-panel'));
-        assert.ok($headerPanelElement.length, 'has headerPanel');
-        assert.ok($headerPanelElement.find('.dx-datagrid-search-panel').length, 'has searchPanel');
-    });
-
-    // T548906
-    QUnit.test('Change page index when virtual scrolling is enabled', function(assert) {
-    // arrange
-        const generateDataSource = function(count) {
-            const result = [];
-
-            for(let i = 0; i < count; ++i) {
-                result.push({ firstName: 'test name' + i, lastName: 'test lastName' + i, room: 100 + i, cash: 101 + i * 10 });
-            }
-
-            return result;
-        };
-        const dataGrid = createDataGrid({
-            height: 800,
-            loadingTimeout: undefined,
-            dataSource: generateDataSource(100),
-            scrolling: {
-                mode: 'virtual',
-                timeout: 0
-            }
-        });
-
-        // act
-        dataGrid.pageIndex(3);
-
-        // assert
-        assert.equal(dataGrid.pageIndex(), 3, 'page index');
-    });
-
-    // T548906
-    QUnit.test('Filtering on load when virtual scrolling', function(assert) {
-    // arrange
-        const generateDataSource = function(count) {
-            const result = [];
-            for(let i = 0; i < count; ++i) {
-                result.push({ firstName: 'name_' + i, lastName: 'lastName_' + i });
-            }
-            return result;
-        };
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            height: 50,
-            dataSource: generateDataSource(10),
-            scrolling: {
-                mode: 'virtual'
-            },
-            paging: {
-                pageSize: 2
-            },
-            columns: [
-                { dataField: 'firstName', filterValue: 'name_5' },
-                'lastName'
-            ]
-        });
-
-        const items = dataGrid.getDataSource().items();
-
-        // assert
-        assert.equal(items.length, 1, '1 item in dataSource');
-        assert.equal(items[0].firstName, 'name_5', 'filtered row \'firstName\' field value');
-        assert.equal(items[0].lastName, 'lastName_5', 'filtered row \'lastName\' field value');
-    });
-
-    QUnit.test('DataGrid should not paginate to the already loaded page if it is not in the viewport and it\'s row was focused (T726994)', function(assert) {
-    // arrange
-        const generateDataSource = function(count) {
-            const result = [];
-            for(let i = 0; i < count; ++i) {
-                result.push({ firstName: 'name_' + i, lastName: 'lastName_' + i });
-            }
-            return result;
-        };
-        const dataGrid = createDataGrid({
-            loadingTimeout: undefined,
-            height: 200,
-            dataSource: generateDataSource(100),
-            keyExpr: 'firstName',
-            focusedRowEnabled: true,
-            scrolling: {
-                mode: 'virtual'
-            },
-            paging: {
-                pageSize: 4,
-                pageIndex: 2
-            },
-            columns: ['firstName', 'lastName']
-        });
-
-        // act
-        const visibleRow0 = dataGrid.getController('data').getVisibleRows()[0];
-        const $row = $(dataGrid.getRowElement(4));
-        const $cell = $row.find('td').eq(0);
-        $cell.trigger(pointerEvents.up);
-
-        // assert
-        assert.deepEqual(visibleRow0.key, dataGrid.getController('data').getVisibleRows()[0].key, 'Compare first visible row');
-    });
-
-    // T731090
-    QUnit.test('DataGrid should hide load panel after filtering to no data if focused row is enabled', function(assert) {
-    // arrange
-        const generateDataSource = function(count) {
-            const result = [];
-            for(let i = 1; i <= count; ++i) {
-                result.push({ id: i });
-            }
-            return result;
-        };
-        const dataGrid = createDataGrid({
-            height: 100,
-            dataSource: generateDataSource(100),
-            keyExpr: 'id',
-            focusedRowEnabled: true,
-            focusedRowKey: 1,
-            scrolling: {
-                mode: 'virtual'
-            }
-        });
-
-        this.clock.tick();
-
-        dataGrid.pageIndex(5);
-        this.clock.tick();
-
-        // act
-        dataGrid.filter(['id', '=', 666]);
-        this.clock.tick();
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows().length, 0, 'no rows');
-        assert.strictEqual(dataGrid.getController('data').isLoading(), false, 'no loading');
-    });
-
-    // T558189
-    QUnit.test('Band columns should be displayed correctly after state is reset', function(assert) {
-    // arrange
-        let columns;
-        const dataGrid = createDataGrid({
-            dataSource: [{ field1: 1, field2: 2, field3: 3, field4: 4 }],
-            paging: {
-                pageIndex: 0
-            },
-            customizeColumns: function() {},
-            columns: ['field1', 'field2', { caption: 'Band Column', columns: ['field3', 'field4'] }]
-        });
-
-        this.clock.tick();
-
-        // act
-        dataGrid.state(null);
-        this.clock.tick();
-
-        // assert
-        columns = dataGrid.getVisibleColumns(0).map(function(column) { return column.caption; });
-        assert.deepEqual(columns, ['Field 1', 'Field 2', 'Band Column'], 'columns of the first level');
-
-        columns = dataGrid.getVisibleColumns(1).map(function(column) { return column.caption; });
-        assert.deepEqual(columns, ['Field 3', 'Field 4'], 'columns of the second level');
-    });
-
-    // T592655
-    QUnit.test('Sorting should not throw an exception when headers are hidden', function(assert) {
-    // arrange
-        const dataGrid = createDataGrid({
-            showColumnHeaders: false,
-            dataSource: [{ field1: 1, field2: 2, field3: 3 }, { field1: 4, field2: 5, field3: 6 }]
-        });
-
-        this.clock.tick();
-
-        try {
-        // act
-            dataGrid.columnOption('field2', 'sortOrder', 'desc');
-            this.clock.tick();
-
-            // assert
-            assert.ok(true, 'no exceptions');
-        } catch(e) {
-        // assert
-            assert.ok(false, 'exception');
-        }
-    });
-
     // T709033
     QUnit.test('Band columns should be displayed correctly after adding columns and changing the summary', function(assert) {
-    // arrange
+        // arrange
         let visibleColumns;
         const dataGrid = createDataGrid({
             dataSource: [{ field1: 1, field2: 2, field3: 3 }, { field1: 4, field2: 5, field3: 6 }],
@@ -12212,7 +4369,7 @@ QUnit.module('API methods', baseModuleConfig, () => {
 
     // T829029
     QUnit.test('Change columnWidth via option method', function(assert) {
-    // arrange
+        // arrange
         const dataGrid = createDataGrid({
             dataSource: [{ field1: 1, field2: 2, field3: 3 }],
             columnWidth: 50,
@@ -12228,99 +4385,12 @@ QUnit.module('API methods', baseModuleConfig, () => {
         assert.strictEqual(columns[1].width, 200, 'width of the second column');
         assert.strictEqual(columns[2].width, 200, 'width of the third column');
     });
-
-    QUnit.test('Group Row - expandRow should resolve its promise only after re-rendering (T880769)', function(assert) {
-        // arrange
-        const getRowsInfo = function(element) {
-            const $rows = $(element).find('.dx-datagrid-rowsview .dx-row[role=\'row\']');
-            return {
-                rowCount: $rows.length,
-                groupRow: $($rows.eq(0)).hasClass('dx-group-row'),
-                dataRow: $($rows.eq(1)).hasClass('dx-data-row')
-            };
-        };
-        const dataGrid = createDataGrid({
-            dataSource: [
-                { column1: 'value1', column2: 'value2' }
-            ],
-            grouping: {
-                autoExpandAll: false,
-            },
-            columns: [
-                {
-                    dataField: 'column1',
-                    groupIndex: 0
-                },
-                'column2'
-            ],
-            onRowExpanded: function() {
-                const info = getRowsInfo(dataGrid.element());
-                assert.step(`rowExpanded rowCount: ${info.rowCount}, groupRow: ${info.groupRow}, dataRow: ${info.dataRow}`);
-            }
-        });
-        this.clock.tick();
-
-        // act
-        dataGrid.expandRow(['value1']).done(() => {
-            const info = getRowsInfo(dataGrid.element());
-
-            assert.step(`done rowCount: ${info.rowCount}, groupRow: ${info.groupRow}, dataRow: ${info.dataRow}`);
-        });
-        this.clock.tick();
-
-        assert.verifySteps([
-            'rowExpanded rowCount: 2, groupRow: true, dataRow: true',
-            'done rowCount: 2, groupRow: true, dataRow: true'
-        ]);
-    });
-
-    QUnit.testInActiveWindow('Filter row editor should have focus after _synchronizeColumns (T638737)', function(assert) {
-        $('#qunit-fixture').css('position', 'static');
-        // arrange, act
-        const dataGrid = createDataGrid({
-            filterRow: { visible: true },
-            editing: { allowAdding: true },
-            columns: [
-                { dataField: 'field1' },
-                { dataField: 'field2' }
-            ],
-            dataSource: [{ field1: 1, field2: 2 }, { field1: 3, field2: 4 }]
-        });
-
-        this.clock.tick();
-
-        const $input = $(dataGrid.$element()).find('.dx-editor-cell').first().find('.dx-texteditor-input');
-        $input.focus().val('1').trigger('change');
-
-        const selectionRangeArgs = [];
-
-        const oldSetSelectionRange = gridCoreUtils.setSelectionRange;
-        gridCoreUtils.setSelectionRange = function(element, range) {
-            oldSetSelectionRange.apply(this, arguments);
-            selectionRangeArgs.push([element, range]);
-        };
-
-        this.clock.tick();
-
-        gridCoreUtils.setSelectionRange = oldSetSelectionRange;
-
-        // assert
-        const $focusedInput = dataGrid.$element().find('.dx-editor-cell .dx-texteditor-input:focus');
-        assert.equal(dataGrid.getVisibleRows().length, 1, 'filter was applied');
-        assert.ok($focusedInput.length, 'filter cell has focus after filter applyed');
-        // T662207
-        if(devices.real().deviceType === 'desktop') {
-            assert.deepEqual(selectionRangeArgs, [[$focusedInput.get(0), { selectionStart: 1, selectionEnd: 1 }]], 'setSelectionRange args');
-        }
-
-        $('#qunit-fixture').css('position', '');
-    });
 });
 
 QUnit.module('templates', baseModuleConfig, () => {
 
     QUnit.test('template no found - create text node', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({});
 
         const container = $('<div />').appendTo('#qunit-fixture');
@@ -12335,7 +4405,7 @@ QUnit.module('templates', baseModuleConfig, () => {
     });
 
     QUnit.test('test template in dataGrid container', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({});
 
         const container = $('<div />').appendTo('#qunit-fixture');
@@ -12350,7 +4420,7 @@ QUnit.module('templates', baseModuleConfig, () => {
     });
 
     QUnit.test('test template in script outside container', function(assert) {
-    // arrange
+        // arrange
         setTemplateEngine({
             compile: function(element) {
                 element = $(element);
@@ -12375,7 +4445,7 @@ QUnit.module('templates', baseModuleConfig, () => {
 
     // T474695
     QUnit.test('jsrender row template should works', function(assert) {
-    // arrange, act
+        // arrange, act
         setTemplateEngine('jsrender');
 
         const dataGrid = createDataGrid({
@@ -12396,7 +4466,7 @@ QUnit.module('templates', baseModuleConfig, () => {
 
     // TODO: deprecated, remove it in 15.1
     QUnit.test('test template in script outside container (get by selector)', function(assert) {
-    // arrange
+        // arrange
         setTemplateEngine({
             compile: function(element) {
                 element = $(element);
@@ -12420,7 +4490,7 @@ QUnit.module('templates', baseModuleConfig, () => {
     });
 
     QUnit.test('getTemplate in gridView', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({});
 
         const container = $('<div />').appendTo('#qunit-fixture');
@@ -12436,7 +4506,7 @@ QUnit.module('templates', baseModuleConfig, () => {
 
     // T344195
     QUnit.test('Setting cellTemplate via DOM node with id attribute', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             dataSource: [{ column1: 'test1', column2: 'test2' }],
             columns: [{ dataField: 'column1', cellTemplate: document.getElementById('scriptTestTemplate1') }, { dataField: 'column2', cellTemplate: document.getElementById('scriptTestTemplate2') }]
@@ -12452,7 +4522,7 @@ QUnit.module('templates', baseModuleConfig, () => {
 
     // T344195
     QUnit.test('Setting cellTemplate via DOM node without id attribute', function(assert) {
-    // arrange, act
+        // arrange, act
         const $template1 = $('#scriptTestTemplate1').removeAttr('id');
         const $template2 = $('#scriptTestTemplate2').removeAttr('id');
 
@@ -12473,7 +4543,7 @@ QUnit.module('templates', baseModuleConfig, () => {
 
     // T344195
     QUnit.test('Setting cellTemplate via dxTemplate', function(assert) {
-    // arrange, act
+        // arrange, act
 
         const dataGrid = createDataGrid({
             dataSource: [{ column1: 'test1', column2: 'test2' }],
@@ -12490,7 +4560,7 @@ QUnit.module('templates', baseModuleConfig, () => {
 
     // T312012
     QUnit.test('Setting rowTemplate via dxTemplate', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             rowTemplate: 'testRow',
@@ -12506,8 +4576,85 @@ QUnit.module('templates', baseModuleConfig, () => {
         assert.strictEqual($(dataGrid.$element()).find('[data-options]').length, 0, 'no elements with data-options attribute');
     });
 
+    // T952701
+    QUnit.test('Add row when DataGrid is empty and rowTemplate is used', function(assert) {
+        const dataGrid = createDataGrid({
+            width: 1000,
+            dataSource: [],
+            loadingTimeout: undefined,
+            columns: ['field1', {
+                dataField: 'field2',
+                width: 100
+            }],
+            rowTemplate: (container, options) => {
+                $(container).append(
+                    `<tbody class='dx-row'>
+                        <tr>
+                            <td>new</td>
+                            <td>new</td>
+                        </tr>
+                    </tbody>`
+                );
+            }
+        });
+
+        // act
+        dataGrid.addRow();
+
+        // assert
+        const $row = $(dataGrid.getRowElement(0));
+        const $cells = $row.find('td');
+        assert.equal($cells.eq(0).outerWidth(), 900, 'first cell width');
+        assert.equal($cells.eq(1).outerWidth(), 100, 'second cell width');
+        assert.equal(dataGrid.$element().outerWidth(), 1000, 'dataGrid width');
+    });
+
+    // T952701
+    QUnit.test('Add row when DataGrid is empty and rowTemplate is used (with columnAutoWidth and editing)', function(assert) {
+        const dataGrid = createDataGrid({
+            width: 1000,
+            dataSource: [],
+            loadingTimeout: undefined,
+            rowTemplate: (container, options) => {
+                $(container).append(
+                    `<tbody class='dx-row'>
+                        <tr>
+                            <td>new</td>
+                            <td>new</td>
+                        </tr>
+                    </tbody>`
+                );
+            },
+            editing: { allowAdding: true },
+            columns: ['field1', {
+                dataField: 'field2',
+                width: 100
+            }, {
+                type: 'buttons',
+                visible: false
+            }],
+            columnAutoWidth: true
+        });
+
+        try {
+            // act
+            dataGrid.addRow();
+        } catch(err) {
+            // assert
+            assert.notOk(true, 'error should not be thrown');
+            return;
+        }
+
+        // assert
+        const $row = $(dataGrid.getRowElement(0));
+        const $cells = $row.find('td');
+        assert.equal($cells.eq(0).outerWidth(), 900, 'first cell width');
+        assert.equal($cells.eq(1).outerWidth(), 100, 'second cell width');
+        assert.equal(dataGrid.$element().outerWidth(), 1000, 'dataGrid width');
+    });
+
     QUnit.test('rowElement argument of rowTemplate option is correct', function(assert) {
-    // arrange, act
+        // arrange, act
         createDataGrid({
             rowTemplate: function(rowElement) {
                 assert.equal(typeUtils.isRenderer(rowElement), !!config().useJQuery, 'rowElement is correct');
@@ -12517,53 +4664,9 @@ QUnit.module('templates', baseModuleConfig, () => {
         });
     });
 
-    // T821418, T878862
-    QUnit.test('rowTemplate with tbody should works with virtual scrolling', function(assert) {
-        // arrange, act
-        const data = [...Array(20)].map((_, i) => ({ id: i + 1 }));
-        const rowHeight = 50;
-        const dataGrid = createDataGrid({
-            height: rowHeight,
-            loadingTimeout: undefined,
-            dataSource: data,
-            columns: ['id'],
-            scrolling: {
-                mode: 'virtual',
-                useNative: false
-            },
-            paging: {
-                pageSize: 2
-            },
-            rowTemplate: function(container, options) {
-                $(container).append(`<tbody class='dx-row'><tr style="height: ${rowHeight}px"><td>${options.data.id}</td></tr></tbody>`);
-            }
-        });
-
-        // act
-        dataGrid.getScrollable().scrollTo({ top: 1 });
-        dataGrid.getScrollable().scrollTo({ top: 4 * rowHeight });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows()[0].data.id, 3, 'first visible row');
-        assert.strictEqual($(dataGrid.getCellElement(0, 0)).text(), '3', 'first visible cell text');
-        assert.strictEqual($(dataGrid.element()).find('tbody.dx-virtual-row').length, 2, 'virtual row count');
-        const $colgroup = $(dataGrid.element()).find('.dx-datagrid-rowsview colgroup');
-        assert.strictEqual($colgroup.length, 1, 'colgroup element exists');
-        // T878862
-        assert.strictEqual($colgroup.index(), 0, 'colgroup is first element in table');
-
-        // act
-        dataGrid.getScrollable().scrollTo({ top: 0 });
-
-        // assert
-        assert.strictEqual(dataGrid.getVisibleRows()[0].data.id, 1, 'first visible row');
-        assert.strictEqual($(dataGrid.getCellElement(0, 0)).text(), '1', 'first visible cell text');
-        assert.strictEqual($(dataGrid.element()).find('tbody.dx-virtual-row').length, 1, 'virtual row count');
-    });
-
     // T120698
     QUnit.test('totalCount', function(assert) {
-    // arrange, act
+        // arrange, act
         const dataGrid = createDataGrid({
             loadingTimeout: undefined,
             dataSource: {
@@ -12641,59 +4744,6 @@ QUnit.module('columnWidth auto option', {
         const secondColumnWidth = $($('#dataGrid').find('.dx-datagrid-headers').find('td')[1]).width();
 
         assert.ok(secondColumnWidth > 2 * firstColumnWidth, 'second column width more then first');
-    });
-
-    QUnit.test('Group cell should not have width style', function(assert) {
-        const dataSource = [
-            { firstName: 'Alex', lastName: 'Black', room: 903 },
-            { firstName: 'Alex', lastName: 'White', room: 904 }
-        ];
-
-        // act
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: dataSource,
-            columnAutoWidth: true,
-            columns: [{
-                dataField: 'firstName',
-                groupIndex: 0,
-                width: 100,
-            }, {
-                dataField: 'lastName',
-                width: 150
-            }, 'room']
-        }).dxDataGrid('instance');
-
-        // assert
-        assert.equal($(dataGrid.getCellElement(0, 1)).get(0).style.width, '', 'width style is not defined for group cell');
-        assert.equal($(dataGrid.getCellElement(1, 1)).get(0).style.width, '150px', 'width style is defined for data cell');
-    });
-
-    // T661361
-    QUnit.test('Group space cells should have correct width if data rows are not visible', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{ group1: 1, group2: 1, id: 1 }],
-            grouping: {
-                autoExpandAll: false
-            },
-            columns: ['id', {
-                dataField: 'group1',
-                groupIndex: 0
-            }, {
-                dataField: 'group2',
-                groupIndex: 1
-            }]
-        }).dxDataGrid('instance');
-
-        // act
-        dataGrid.expandRow([1]);
-        dataGrid.updateDimensions();
-
-        // assert
-        const $groupSpaceCells = $(dataGrid.getRowElement(1)).children('.dx-datagrid-group-space');
-        assert.equal($groupSpaceCells.length, 2, 'two group space cells in second row');
-        assert.equal($groupSpaceCells.eq(0).width(), $groupSpaceCells.eq(1).width(), 'group space cell widths are equals');
     });
 
     QUnit.test('Check table params with set width', function(assert) {
@@ -12783,7 +4833,7 @@ QUnit.module('columnWidth auto option', {
 
     // T709106
     QUnit.test('column widths if all columns have width auto and columnAutoWidth is true', function(assert) {
-    // act
+        // act
         const dataGrid = $('#dataGrid').css('width', '').dxDataGrid({
             loadingTimeout: undefined,
             dataSource: [{}],
@@ -13072,7 +5122,7 @@ QUnit.module('Modules', {
     });
 
     QUnit.test('Render view after invalidate', function(assert) {
-    // arrange
+        // arrange
         const testView = new gridCore.View({
             isReady: function() {
                 return true;
@@ -13197,7 +5247,7 @@ QUnit.module('Modules', {
     });
 
     QUnit.test('Begin and end update', function(assert) {
-    // arrange
+        // arrange
         const moduleItem = new gridCore.Controller();
         let endUpdateCounter = 0;
 
@@ -13250,1261 +5300,5 @@ QUnit.module('Formatting', baseModuleConfig, () => {
                 return Math.round(options.value) + ' rub';
             }
         }), '216 rub');
-    });
-});
-
-QUnit.module('Row dragging', baseModuleConfig, () => {
-
-    // T831020
-    QUnit.test('The draggable row should have correct markup when defaultOptions is specified', function(assert) {
-    // arrange
-        DataGrid.defaultOptions({
-            options: {
-                filterRow: {
-                    visible: true
-                },
-                groupPanel: {
-                    visible: true
-                },
-                filterPanel: {
-                    visible: true
-                }
-            }
-        });
-
-        try {
-            const dataGrid = createDataGrid({
-                dataSource: [{ field1: 1, field2: 2, field3: 3 }],
-                rowDragging: {
-                    allowReordering: true
-                }
-            });
-
-            this.clock.tick();
-
-            // act
-            pointerMock(dataGrid.getCellElement(0, 0)).start().down().move(100, 100);
-
-            // assert
-            const $draggableRow = $('body').children('.dx-sortable-dragging');
-            assert.strictEqual($draggableRow.length, 1, 'has draggable row');
-
-            const $visibleView = $draggableRow.find('.dx-gridbase-container').children(':visible');
-            assert.strictEqual($visibleView.length, 1, 'markup of the draggable row is correct');
-            assert.ok($visibleView.hasClass('dx-datagrid-rowsview'), 'rowsview is visible');
-        } finally {
-            DataGrid.defaultOptions({
-                options: {
-                    filterRow: {
-                        visible: false
-                    },
-                    groupPanel: {
-                        visible: false
-                    },
-                    filterPanel: {
-                        visible: false
-                    }
-                }
-            });
-        }
-    });
-
-    QUnit.test('GroupPanel items should be visible by adding new one (T880880)', function(assert) {
-        // arrange
-        const headerPanelWrapper = dataGridWrapper.headerPanel;
-        createDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{ field1: 1, field2: 2, field3: 3 }],
-            groupPanel: {
-                visible: true
-            },
-            columns: [
-                { dataField: 'field1', groupIndex: 0 },
-                { dataField: 'field2' }
-            ]
-        });
-
-        // act
-        const groupPanel = headerPanelWrapper.getGroupPanelElement();
-        $('<div>').addClass('dx-group-panel-item').text('test').appendTo(groupPanel);
-
-        const items = headerPanelWrapper.getGroupPanelItems();
-        const itemsWidth = items.eq(0).outerWidth(true) + items.eq(1).outerWidth(true);
-
-        // assert
-        assert.equal(items.length, 2, '2 items in group panel');
-        assert.roughEqual(groupPanel.innerWidth(), itemsWidth, 1.01, 'enough space for children display');
-    });
-
-    QUnit.test('DataGrid should scroll horizontally without scroll back if focused row is present and \'columnRenderingMode\', \'rowRenderingMode\' are virtual (T834918)', function(assert) {
-    // arrange
-        const that = this;
-        const generateData = function(columnsCount, recordsCount) {
-            const columns = [ 'ID' ];
-            const data = [];
-
-            for(let i = 0; i < columnsCount; ++i) {
-                columns.push(`C_${i}`);
-            }
-
-            for(let i = 0; i < recordsCount; ++i) {
-                const item = { };
-                for(let j = 0; j < columnsCount; ++j) {
-                    const columnName = columns[j];
-                    const value = columnName === 'ID' ? i : `${columnName}_${i}`;
-                    item[columnName] = value;
-                }
-                data.push(item);
-            }
-            that.columns = columns;
-            return data;
-        };
-        const dataGrid = createDataGrid({
-            height: 200,
-            width: 200,
-            dataSource: generateData(10, 10),
-            keyExpr: 'ID',
-            focusedRowEnabled: true,
-            focusedRowIndex: 4,
-            columnWidth: 90,
-            scrolling: {
-                mode: 'virtual',
-                columnRenderingMode: 'virtual',
-                rowRenderingMode: 'virtual',
-                showScrollbar: 'always'
-            }
-        });
-
-        this.clock.tick();
-
-        // act
-        const scrollable = dataGrid.getScrollable();
-        scrollable.scrollTo({ x: 300 });
-        this.clock.tick();
-
-        // assert
-        assert.equal(scrollable.scrollOffset().left, 300, 'Content was scrolled');
-    });
-});
-
-QUnit.module('Column Resizing', baseModuleConfig, () => {
-    QUnit.test('Resize columns', function(assert) {
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 470,
-            selection: { mode: 'multiple', showCheckBoxesMode: 'always' },
-            commonColumnSettings: {
-                allowResizing: true
-            },
-            loadingTimeout: undefined,
-            dataSource: [{}, {}, {}, {}],
-            columns: [{ dataField: 'firstName', width: 100 }, { dataField: 'lastName', width: 100 }, { dataField: 'room', width: 100 }, { dataField: 'birthDay', width: 100 }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 1 };
-        resizeController._setupResizingInfo(-9830);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: -9780,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        const headersCols = $('.dx-datagrid-headers' + ' col');
-        const rowsCols = $('.dx-datagrid-rowsview col');
-        assert.equal($(headersCols[1]).css('width'), '150px', 'width of two column - headers view');
-        assert.equal($(headersCols[2]).css('width'), '50px', 'width of three column - headers view');
-        assert.equal($(rowsCols[1]).css('width'), '150px', 'width of two column - rows view');
-        assert.equal($(rowsCols[2]).css('width'), '50px', 'width of three column - rows view');
-    });
-
-    // T804582
-    QUnit.test('Cursor should switch style when it was moved to columns separator if grid has only one row and big header panel', function(assert) {
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            dataSource: [{}],
-            allowColumnResizing: true,
-            columnChooser: {
-                enabled: true
-            },
-            columns: ['field1', 'field2']
-        });
-        const headerPanel = dataGrid.find('.dx-datagrid-header-panel');
-        const columnsSeparator = dataGrid.find('.dx-datagrid-columns-separator');
-
-        headerPanel.outerHeight('70px', true);
-
-        columnsSeparator.trigger($.Event('dxpointermove', {
-            data: {
-                _isResizing: false,
-            },
-            pageY: columnsSeparator.offset().top + headerPanel.outerHeight() + 1,
-            pageX: columnsSeparator.offset().left + dataGrid.width() / 2
-        }));
-
-        assert.equal(columnsSeparator.css('cursor'), 'col-resize', 'cursor style');
-    });
-
-    // T846832
-    QUnit.test('Columns should not shake during resizing', function(assert) {
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 1000,
-            dataSource: [{}],
-            loadingTimeout: undefined,
-            columns: ['CompanyName', 'City', 'State', 'Phone', 'Fax'],
-            showBorders: true,
-            allowColumnResizing: true
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-        const widths = [];
-        const offset = $('#dataGrid').offset();
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 1 };
-
-        resizeController._startResizing({
-            event: {
-                data: resizeController,
-                type: 'touchstart',
-                pageX: offset.left + 200,
-                pageY: offset.top + 15,
-                preventDefault: function() {},
-                stopPropagation: function() {}
-            }
-        });
-
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                pageX: offset.left + 50,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        resizeController._endResizing({
-            event: {
-                data: resizeController
-            }
-        });
-
-        // assert
-        let $cells = $('#dataGrid').find('td');
-
-        assert.roughEqual($cells.eq(0).width(), 34, 1.01, 'first column width');
-        assert.roughEqual($cells.eq(1).width(), 333, 1.01, 'second column width');
-
-        for(let i = 0; i < 5; i++) {
-            widths.push($('#dataGrid').find('td').eq(i).width());
-        }
-
-        // act
-        resizeController._startResizing({
-            event: {
-                data: resizeController,
-                type: 'touchstart',
-                pageX: offset.left + 50,
-                pageY: offset.top + 15,
-                preventDefault: function() {},
-                stopPropagation: function() {}
-            }
-        });
-
-        resizeController._moveSeparator({
-            event: {
-                type: 'dxpointermove',
-                data: resizeController,
-                pageX: offset.left + 51,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        resizeController._endResizing({
-            event: {
-                data: resizeController
-            }
-        });
-
-        // assert
-        $cells = $('#dataGrid').find('td');
-
-        assert.equal($cells.eq(0).width(), widths[0] + 1, 'first column width');
-        assert.equal($cells.eq(1).width(), widths[1] - 1, 'second column width');
-
-        for(let i = 2; i < 5; i++) {
-            assert.equal($cells.eq(i).width(), widths[i], 'width was not affected');
-        }
-    });
-
-    // T571282, T835869, T881314
-    QUnit.test('Resizing columns should work correctly when scrolling mode is \'virtual\' and wordWrapEnabled is true', function(assert) {
-        // arrange
-        const generateData = function(count) {
-            const result = [];
-
-            for(let i = 0; i < count; i++) {
-                result.push({ name: 'name' + i, description: 'test test test test test test test test' });
-            }
-
-            return result;
-        };
-
-        const loadingSpy = sinon.spy();
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 200,
-            height: 200,
-            wordWrapEnabled: true,
-            allowColumnResizing: true,
-            loadingTimeout: undefined,
-            columnResizingMode: 'widget',
-            dataSource: {
-                store: {
-                    type: 'array',
-                    data: generateData(60),
-                    onLoading: loadingSpy
-                },
-                pageSize: 2
-            },
-            columns: [{ dataField: 'name', width: 100 }, 'description'],
-            scrolling: {
-                mode: 'virtual',
-                rowRenderingMode: 'standard'
-            }
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-        const rowsView = instance.getView('rowsView');
-        const scrollable = instance.getScrollable();
-        const deviceType = devices.real().deviceType;
-
-        scrollable.scrollTo({ y: 1440 });
-        deviceType !== 'desktop' && $(scrollable._container()).trigger('scroll');
-
-        // assert
-        const rowHeight = rowsView._rowHeight;
-        assert.ok(rowHeight > 50, 'rowHeight > 50');
-        assert.strictEqual(instance.getVisibleRows().length, 6, 'row count');
-        assert.strictEqual(instance.pageIndex(), 10, 'current page index');
-        assert.strictEqual(instance.getTopVisibleRowData().name, 'name20', 'top visible row');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 1 };
-        resizeController._setupResizingInfo(-9900);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: -9600,
-                preventDefault: commonUtils.noop
-            }
-        });
-        resizeController._endResizing({
-            event: {
-                data: resizeController
-            }
-        });
-        deviceType !== 'desktop' && $(scrollable._container()).trigger('scroll');
-
-        // assert
-        assert.strictEqual(instance.pageIndex(), 20, 'current page index is changed'); // T881314
-        assert.strictEqual(instance.getTopVisibleRowData().name, 'name40', 'top visible row is changed');
-        assert.notStrictEqual(rowsView._rowHeight, rowHeight, 'row height has changed');
-        assert.ok(rowsView._rowHeight < 50, 'rowHeight < 50');
-        assert.strictEqual(instance.getVisibleRows().length, 8, 'row count');
-        // T835869
-        assert.strictEqual(loadingSpy.callCount, 1, 'data is loaded once');
-    });
-
-    // T596274
-    QUnit.testInActiveWindow('Resize a column with the \'between\' filter should not throw an exception', function(assert) {
-        // arrange
-        let $filterRangeContent;
-
-        fx.off = true;
-
-        try {
-            const dataGrid = $('#dataGrid').dxDataGrid({
-                width: 200,
-                allowColumnResizing: true,
-                loadingTimeout: undefined,
-                filterRow: {
-                    visible: true
-                },
-                dataSource: [{ name: 'Bob', age: 16 }],
-                columns: [
-                    { dataField: 'name', width: 100 },
-                    { dataField: 'age', width: 100, selectedFilterOperation: 'between' }
-                ]
-            });
-            const instance = dataGrid.dxDataGrid('instance');
-
-            $filterRangeContent = $('#dataGrid').find('.dx-datagrid-filter-row').find('.dx-filter-range-content').first();
-            $filterRangeContent.focus();
-            this.clock.tick();
-
-            // assert
-            assert.strictEqual($('.dx-overlay-wrapper.dx-datagrid-filter-range-overlay').length, 1, 'has overlay wrapper');
-
-            // act
-            const resizeController = instance.getController('columnsResizer');
-            resizeController._startResizing({
-                event: {
-                    data: resizeController,
-                    type: 'touchstart',
-                    pageX: -9900,
-                    pageY: -9990,
-                    preventDefault: function() {},
-                    stopPropagation: function() {}
-                }
-            });
-            resizeController._moveSeparator({
-                event: {
-                    data: resizeController,
-                    pageX: -9850,
-                    preventDefault: commonUtils.noop
-                }
-            });
-            resizeController._endResizing({
-                event: {
-                    data: resizeController
-                }
-            });
-
-            // assert
-            assert.strictEqual(instance.columnOption(0, 'width'), 150);
-            assert.strictEqual(instance.columnOption(1, 'width'), 50);
-        } catch(e) {
-            // assert
-            assert.ok(false, 'exception');
-        } finally {
-            fx.off = false;
-        }
-    });
-
-    // T527538
-    QUnit.test('Grid\'s height should be updated during column resizing if column headers height is changed', function(assert) {
-        // arrange
-        const $dataGrid = $('#dataGrid').dxDataGrid({
-            height: 300,
-            wordWrapEnabled: true,
-            allowColumnResizing: true,
-            loadingTimeout: undefined,
-            dataSource: [{}],
-            columns: [{ dataField: 'firstName', width: 100 }, { dataField: 'lastName', width: 100 }]
-        });
-        const instance = $dataGrid.dxDataGrid('instance');
-
-        const columnHeadersViewHeight = instance.getView('columnHeadersView').getHeight();
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-        resizeController._setupResizingInfo(-9900);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: -9970,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        assert.ok(instance.getView('columnHeadersView').getHeight() > columnHeadersViewHeight, 'column headers height is changed');
-        assert.equal($dataGrid.children().height(), 300, 'widget\'s height is not changed');
-        assert.equal(instance.columnOption(0, 'width'), 30, 'column 0 width');
-        assert.equal(instance.columnOption(1, 'width'), 170, 'column 1 width');
-    });
-
-    QUnit.test('Resize columns and move column to another position in virtual scrolling mode (T222418)', function(assert) {
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 470,
-            scrolling: {
-                mode: 'virtual'
-            },
-            allowColumnReordering: true,
-            allowColumnResizing: true,
-            dataSource: [{ firstName: '1', lastName: '2', room: '3', birthDay: '4' }],
-            columns: [{ dataField: 'firstName', width: 100 }, { dataField: 'lastName', width: 100 }, { dataField: 'room' }, { dataField: 'birthDay' }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-        this.clock.tick(1000);
-
-        resizeController._setupResizingInfo(-9900);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: -9880,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        const columnController = instance.getController('columns');
-        columnController.moveColumn(0, 3);
-        this.clock.tick();
-
-        // assert
-        const colGroups = $('.dx-datagrid colgroup');
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols[0].style.width, '80px');
-            assert.strictEqual(headersCols[1].style.width, '');
-            assert.strictEqual(headersCols[2].style.width, '120px');
-            assert.strictEqual(headersCols[3].style.width, '');
-        }
-    });
-
-    // T356865
-    QUnit.test('Resize grid after column resizing', function(assert) {
-        $('#container').width(200);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['firstName', 'lastName']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        resizeController._setupResizingInfo(-9900);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: -9880,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        $('#container').width(400);
-        instance.updateDimensions();
-
-        // assert
-        assert.strictEqual(instance.$element().width(), 400);
-        assert.strictEqual(instance.columnOption(0, 'width'), '60.000%');
-        assert.strictEqual(instance.columnOption(1, 'width'), '40.000%');
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 2);
-            assert.strictEqual(headersCols[0].style.width, '60%');
-            assert.strictEqual(headersCols[1].style.width, '40%');
-        }
-    });
-
-    QUnit.test('Resize grid after column resizing when adaptColumnWidthByRatio false', function(assert) {
-        $('#container').width(200);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            adaptColumnWidthByRatio: false,
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['firstName', 'lastName']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        resizeController._setupResizingInfo(-9900);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: -9880,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        $('#container').width(400);
-        instance.updateDimensions();
-
-        // assert
-        assert.strictEqual(instance.$element().width(), 200);
-        assert.strictEqual(instance.columnOption(0, 'width'), 120);
-        assert.strictEqual(instance.columnOption(1, 'width'), 80);
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 2);
-            assert.strictEqual(headersCols[0].style.width, '120px');
-            assert.strictEqual(headersCols[1].style.width, 'auto');
-        }
-
-    });
-
-    QUnit.test('Resize grid after column resizing to left when columnResizingMode is widget', function(assert) {
-        $('#container').width(300);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnResizingMode: 'widget',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['firstName', 'lastName', 'age']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({ // T881314
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition - 20,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        assert.strictEqual(instance.$element().children().width(), 280);
-        assert.strictEqual(instance.columnOption(0, 'width'), 80);
-        assert.strictEqual(instance.columnOption(1, 'width'), 100);
-        assert.strictEqual(instance.columnOption(2, 'width'), 100);
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 3);
-            assert.strictEqual(headersCols[0].style.width, '80px');
-            assert.strictEqual(headersCols[1].style.width, '100px');
-            assert.strictEqual(headersCols[2].style.width, 'auto');
-        }
-    });
-
-    // T649906
-    QUnit.test('Last column width should be reseted during column resizing to left when columnResizingMode is widget', function(assert) {
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 400,
-            loadingTimeout: undefined,
-            columnResizingMode: 'widget',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['id', 'firstName', 'lastName', { dataField: 'age', allowResizing: false }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition - 20,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        assert.strictEqual(instance.columnOption(0, 'width'), 80);
-        assert.strictEqual(instance.columnOption(0, 'visibleWidth'), 80);
-        assert.strictEqual(instance.columnOption(1, 'width'), 100);
-        assert.strictEqual(instance.columnOption(1, 'visibleWidth'), 100);
-        assert.strictEqual(instance.columnOption(2, 'width'), 100);
-        assert.strictEqual(instance.columnOption(2, 'visibleWidth'), 'auto');
-        assert.strictEqual(instance.columnOption(3, 'width'), 100);
-        assert.strictEqual(instance.columnOption(3, 'visibleWidth'), 100);
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 4);
-            assert.strictEqual(headersCols[0].style.width, '80px');
-            assert.strictEqual(headersCols[1].style.width, '100px');
-            assert.strictEqual(headersCols[2].style.width, 'auto');
-            assert.strictEqual(headersCols[3].style.width, '100px');
-        }
-    });
-
-    // T649906
-    QUnit.test('Last column width should not be reseted during column resizing to right when columnResizingMode is widget', function(assert) {
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 400,
-            loadingTimeout: undefined,
-            columnResizingMode: 'widget',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['id', 'firstName', 'lastName', { dataField: 'age', allowResizing: false }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition + 20,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        assert.strictEqual(instance.columnOption(0, 'width'), 120);
-        assert.strictEqual(instance.columnOption(0, 'visibleWidth'), undefined);
-        assert.strictEqual(instance.columnOption(1, 'width'), 100);
-        assert.strictEqual(instance.columnOption(1, 'visibleWidth'), undefined);
-        assert.strictEqual(instance.columnOption(2, 'width'), 100);
-        assert.strictEqual(instance.columnOption(2, 'visibleWidth'), undefined);
-        assert.strictEqual(instance.columnOption(3, 'width'), 100);
-        assert.strictEqual(instance.columnOption(3, 'visibleWidth'), undefined);
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 4);
-            assert.strictEqual(headersCols[0].style.width, '120px');
-            assert.strictEqual(headersCols[1].style.width, '100px');
-            assert.strictEqual(headersCols[2].style.width, '100px');
-            assert.strictEqual(headersCols[3].style.width, '100px');
-        }
-    });
-
-    QUnit.test('Resize grid after column resizing to left when columnResizingMode is widget and minWidth is assigned', function(assert) {
-        $('#container').width(300);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnResizingMode: 'widget',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: [{ dataField: 'firstName', minWidth: 50 }, 'lastName', 'age']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition - 50,
-                preventDefault: commonUtils.noop
-            }
-        });
-        resizeController._moveSeparator({ // T881314
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition - 60,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-
-        // assert
-        assert.strictEqual(instance.$element().children().width(), 250);
-        assert.strictEqual(instance.columnOption(0, 'width'), 50);
-        assert.strictEqual(instance.columnOption(1, 'width'), 100);
-        assert.strictEqual(instance.columnOption(2, 'width'), 100);
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 3);
-            assert.strictEqual(headersCols[0].style.width, '50px');
-            assert.strictEqual(headersCols[1].style.width, '100px');
-            assert.strictEqual(headersCols[2].style.width, 'auto');
-        }
-    });
-
-    QUnit.test('Resize grid after column resizing to left when columnResizingMode is nextColumn and minWidth is assigned', function(assert) {
-        $('#container').width(200);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnResizingMode: 'nextColumn',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['firstName', { dataField: 'lastName', minWidth: 50 }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition + 50,
-                preventDefault: commonUtils.noop
-            }
-        });
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition + 60,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        instance.updateDimensions();
-
-        // assert
-        assert.strictEqual(instance.$element().children().width(), 200);
-        assert.strictEqual(instance.columnOption(0, 'width'), '75.000%');
-        assert.strictEqual(instance.columnOption(1, 'width'), '25.000%');
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 2);
-            assert.strictEqual(headersCols[0].style.width, '75%');
-            assert.strictEqual(headersCols[1].style.width, '25%');
-        }
-    });
-
-    // T670844
-    QUnit.test('Resize column if all columns have percent widths and columnResizingMode is nextColumn', function(assert) {
-        $('#container').width(200);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnResizingMode: 'nextColumn',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: [
-                { dataField: 'field1', width: '50%' },
-                { dataField: 'field2', width: '50%' },
-                { dataField: 'field3', width: '50%' },
-                { dataField: 'field4', width: '50%' }
-            ]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition + 25,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        instance.updateDimensions();
-
-        // assert
-        assert.strictEqual(instance.$element().children().width(), 200);
-        assert.strictEqual(instance.columnOption(0, 'width'), '75.000%');
-        assert.strictEqual(instance.columnOption(1, 'width'), '25.000%');
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 4);
-            assert.strictEqual(headersCols[0].style.width, '75%');
-            assert.strictEqual(headersCols[1].style.width, '25%');
-        }
-    });
-
-    QUnit.test('Resize grid after column resizing to left when columnResizingMode is widget and grid\'s width is 100%', function(assert) {
-        $('#container').width(300);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: '100%',
-            loadingTimeout: undefined,
-            columnResizingMode: 'widget',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['firstName', 'lastName', 'age']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({ // T881314
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition - 20,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        assert.strictEqual(instance.$element().children().width(), 300);
-        assert.strictEqual(instance.columnOption(0, 'width'), 80);
-        assert.strictEqual(instance.columnOption(1, 'width'), 100);
-        assert.strictEqual(instance.columnOption(2, 'width'), 100);
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 3);
-            assert.strictEqual(headersCols[0].style.width, '80px');
-            assert.strictEqual(headersCols[1].style.width, '100px');
-            assert.strictEqual(headersCols[2].style.width, 'auto');
-        }
-    });
-
-    QUnit.test('Resize grid after column resizing to right when columnResizingMode is widget', function(assert) {
-        $('#container').width(300);
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            columnResizingMode: 'widget',
-            allowColumnResizing: true,
-            dataSource: [{}],
-            columns: ['firstName', 'lastName', 'age']
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-
-        const startPosition = -9900;
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition + 120,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        assert.strictEqual(instance.$element().children().width(), 300);
-        assert.strictEqual(instance.columnOption(0, 'width'), 220);
-        assert.strictEqual(instance.columnOption(1, 'width'), 100);
-        assert.strictEqual(instance.columnOption(2, 'width'), 100);
-
-        const colGroups = $('.dx-datagrid colgroup');
-        assert.strictEqual(colGroups.length, 2);
-
-        for(let i = 0; i < colGroups.length; i++) {
-            const headersCols = colGroups.eq(i).find('col');
-
-            assert.strictEqual(headersCols.length, 3);
-            assert.strictEqual(headersCols[0].style.width, '220px');
-            assert.strictEqual(headersCols[1].style.width, '100px');
-            assert.strictEqual(headersCols[2].style.width, '100px');
-        }
-    });
-
-    QUnit.test('DataGrid - A fixed rows should be synchronized after resize column if wordWrapEnabled and height are set (T830739)', function(assert) {
-        // arrange
-        const rowsViewWrapper = dataGridWrapper.rowsView;
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            loadingTimeout: undefined,
-            width: 400,
-            height: 150,
-            dataSource: [
-                { id: 0, c0: 'Test00 resize', c1: 'Test10' },
-                { id: 1, c0: 'Test01 resize', c1: 'Test11' }
-            ],
-            allowColumnResizing: true,
-            rowAlternationEnabled: true,
-            wordWrapEnabled: true,
-            columns: [
-                { dataField: 'id', width: 100, fixed: true },
-                { dataField: 'c0', width: 200 },
-                { dataField: 'c1', width: 100 }
-            ]
-        }).dxDataGrid('instance');
-
-        // act
-        const startPosition = -9700;
-        const resizeController = dataGrid.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 1 };
-        resizeController._setupResizingInfo(startPosition);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: startPosition - 150,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // arrange, assert
-        let $fixedDataRow = rowsViewWrapper.getFixedDataRow(0).getElement();
-        let $dataRow = rowsViewWrapper.getDataRow(0).getElement();
-        assert.deepEqual($fixedDataRow.position(), $dataRow.position(), '1st row position');
-        assert.equal($fixedDataRow.height(), $dataRow.height(), '1st row height');
-
-        // arrange, assert
-        $fixedDataRow = rowsViewWrapper.getFixedDataRow(1).getElement();
-        $dataRow = rowsViewWrapper.getDataRow(1).getElement();
-        assert.deepEqual($fixedDataRow.position(), $dataRow.position(), '2nd row position');
-        assert.equal($fixedDataRow.height(), $dataRow.height(), '2nd row height');
-    });
-
-    QUnit.test('Resize command column', function(assert) {
-        // arrange
-        const dataGrid = $('#dataGrid').dxDataGrid({
-            width: 470,
-            selection: { mode: 'multiple', showCheckBoxesMode: 'always' },
-            commonColumnSettings: {
-                allowResizing: true
-            },
-            loadingTimeout: undefined,
-            dataSource: [{}, {}, {}, {}],
-            columns: [{ type: 'selection' }, { dataField: 'firstName', width: 100 }, { dataField: 'lastName', width: 100 }, { dataField: 'room', width: 100 }, { dataField: 'birthDay', width: 100 }]
-        });
-        const instance = dataGrid.dxDataGrid('instance');
-
-        // act
-        const resizeController = instance.getController('columnsResizer');
-        resizeController._isResizing = true;
-        resizeController._targetPoint = { columnIndex: 0 };
-        resizeController._setupResizingInfo(-9930);
-        resizeController._moveSeparator({
-            event: {
-                data: resizeController,
-                type: 'mousemove',
-                pageX: -9850,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        // assert
-        const headersCols = $('.dx-datagrid-headers' + ' col');
-        assert.equal($(headersCols[0]).css('width'), '150px', 'width of the first column - headers view');
-        assert.equal($(headersCols[1]).css('width'), '20px', 'width of the second column - headers view');
-    });
-
-    QUnit.test('Resize columns for virtual scrolling', function(assert) {
-        // arrange
-        const testElement = $('#dataGrid');
-        const generateDataSource = function(recordsCount) {
-            const result = [];
-
-            for(let i = 0; i < recordsCount; i++) {
-                result.push({ field1: 'data' + i, field2: 'data' + i, field3: 'data' + i, field4: 'data' + i });
-            }
-
-            return result;
-        };
-        const $dataGrid = testElement.dxDataGrid({
-            width: 1000,
-            height: 200,
-            loadingTimeout: undefined,
-            dataSource: generateDataSource(10),
-            allowColumnResizing: true,
-            scrolling: {
-                mode: 'virtual'
-            },
-            columns: [
-                { dataField: 'field1' },
-                { dataField: 'field2' },
-                { dataField: 'field3' },
-                { dataField: 'field4' }
-            ]
-        });
-        const dataGrid = $dataGrid.dxDataGrid('instance');
-        const columnsResizer = dataGrid.getController('columnsResizer');
-
-        // act
-        columnsResizer._isResizing = true;
-        columnsResizer._targetPoint = { columnIndex: 0 };
-        columnsResizer._setupResizingInfo(-9750);
-        columnsResizer._moveSeparator({
-            event: {
-                data: columnsResizer,
-                type: 'mousemove',
-                pageX: -9600,
-                preventDefault: commonUtils.noop
-            }
-        });
-
-        const $tables = $('.dx-datagrid-rowsview .dx-datagrid-table');
-
-        // assert
-        assert.equal($tables.eq(0).find('col').eq(0).width(), 400, 'width of first column for first table');
-    });
-
-    QUnit.module('RTL mode', () => {
-        QUnit.test('The separator position should be correct when a parent grid container in RTL mode', function(assert) {
-            // arrange
-            const $testElement = $('#dataGrid');
-
-            $testElement.parent().attr('dir', 'rtl').css({ width: '1000px', height: '500px' });
-
-            const instance = $testElement.dxDataGrid({
-                commonColumnSettings: {
-                    allowResizing: true
-                },
-                rtlEnabled: true,
-                columnResizingMode: 'widget',
-                allowColumnResizing: true,
-                loadingTimeout: undefined,
-                dataSource: [{}],
-                columns: [
-                    { caption: 'Column 1', width: '125px' },
-                    { caption: 'Column 2', width: '125px' },
-                    { caption: 'Column 3', width: '125px' },
-                    { caption: 'Column 4', width: '125px' }
-                ]
-            }).dxDataGrid('instance');
-
-            // act
-            const resizeController = instance.getController('columnsResizer');
-            resizeController._isResizing = true;
-            resizeController._targetPoint = { columnIndex: 0 };
-            resizeController._setupResizingInfo(-9125);
-            resizeController._moveSeparator({
-                event: {
-                    data: resizeController,
-                    type: 'mousemove',
-                    pageX: -9225,
-                    preventDefault: commonUtils.noop
-                }
-            });
-
-            // assert
-            assert.deepEqual($(resizeController._columnsSeparatorView.element()).offset(), { left: -9225, top: -10000 }, 'separator position');
-        });
-
-        QUnit.test('The scroll position should be updated after resizing column', function(assert) {
-            // arrange
-            const $testElement = $('#dataGrid');
-
-            $testElement.parent().attr('dir', 'rtl').css({ width: '1000px', height: '500px' });
-
-            const instance = $testElement.dxDataGrid({
-                commonColumnSettings: {
-                    allowResizing: true
-                },
-                width: 500,
-                rtlEnabled: true,
-                columnResizingMode: 'widget',
-                allowColumnResizing: true,
-                loadingTimeout: undefined,
-                dataSource: [{}],
-                columns: [
-                    { caption: 'Column 1', width: '125px' },
-                    { caption: 'Column 2', width: '125px' },
-                    { caption: 'Column 3', width: '125px' },
-                    { caption: 'Column 4', width: '125px' }
-                ]
-            }).dxDataGrid('instance');
-
-            // act
-            const resizeController = instance.getController('columnsResizer');
-            resizeController._isResizing = true;
-            resizeController._targetPoint = { columnIndex: 0 };
-            resizeController._startResizing({
-                event: {
-                    data: resizeController,
-                    type: 'touchstart',
-                    pageX: -9125,
-                    pageY: -10000,
-                    preventDefault: function() {},
-                    stopPropagation: function() {}
-                }
-            });
-            resizeController._moveSeparator({
-                event: {
-                    data: resizeController,
-                    type: 'mousemove',
-                    pageX: -9225,
-                    preventDefault: commonUtils.noop
-                }
-            });
-
-            // assert
-            assert.strictEqual(instance.getScrollable().scrollLeft(), 100, 'scroll left position');
-        });
     });
 });

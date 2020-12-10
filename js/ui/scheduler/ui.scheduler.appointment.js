@@ -12,13 +12,16 @@ import DOMComponent from '../../core/dom_component';
 import Resizable from '../resizable';
 import messageLocalization from '../../localization/message';
 import dateLocalization from '../../localization/date';
-import { EMPTY_APPOINTMENT_CLASS,
+import {
+    EMPTY_APPOINTMENT_CLASS,
     RECURRENCE_APPOINTMENT_CLASS,
     REDUCED_APPOINTMENT_CLASS,
     ALL_DAY_APPOINTMENT_CLASS,
     REDUCED_APPOINTMENT_ICON,
     REDUCED_APPOINTMENT_PARTS_CLASSES,
-    DIRECTION_APPOINTMENT_CLASSES } from './constants';
+    DIRECTION_APPOINTMENT_CLASSES,
+    APPOINTMENT_DRAG_SOURCE_CLASS,
+} from './constants';
 
 const DEFAULT_HORIZONTAL_HANDLES = 'left right';
 const DEFAULT_VERTICAL_HANDLES = 'top bottom';
@@ -39,7 +42,8 @@ const Appointment = DOMComponent.inherit({
             direction: 'vertical',
             resizableConfig: {},
             cellHeight: 0,
-            cellWidth: 0
+            cellWidth: 0,
+            isDragSource: false,
         });
     },
 
@@ -59,6 +63,9 @@ const Appointment = DOMComponent.inherit({
             case 'cellWidth':
                 this._invalidate();
                 break;
+            case 'isDragSource':
+                this._renderDragSourceClass();
+                break;
             default:
                 this.callBase(args);
         }
@@ -75,7 +82,8 @@ const Appointment = DOMComponent.inherit({
             handles: this.option('reduced') ? reducedHandles[this.option('reduced')] : DEFAULT_HORIZONTAL_HANDLES,
             minHeight: 0,
             minWidth: this.invoke('getCellWidth'),
-            step: this.invoke('getResizableStep')
+            step: this.invoke('getResizableStep'),
+            roundStepValue: false,
         };
     },
 
@@ -85,7 +93,8 @@ const Appointment = DOMComponent.inherit({
             handles: DEFAULT_VERTICAL_HANDLES,
             minWidth: 0,
             minHeight: height,
-            step: height
+            step: height,
+            roundStepValue: true,
         };
     },
 
@@ -96,6 +105,7 @@ const Appointment = DOMComponent.inherit({
         this._renderEmptyClass();
         this._renderReducedAppointment();
         this._renderAllDayClass();
+        this._renderDragSourceClass();
         this._renderDirection();
 
         this.$element().data('dxAppointmentStartDate', this.option('startDate'));
@@ -176,6 +186,10 @@ const Appointment = DOMComponent.inherit({
         this.$element().toggleClass(ALL_DAY_APPOINTMENT_CLASS, !!this.option('allDay'));
     },
 
+    _renderDragSourceClass: function() {
+        this.$element().toggleClass(APPOINTMENT_DRAG_SOURCE_CLASS, !!this.option('isDragSource'));
+    },
+
     _renderRecurrenceClass: function() {
         const rule = this.invoke('getField', 'recurrenceRule', this.option('data'));
 
@@ -190,7 +204,6 @@ const Appointment = DOMComponent.inherit({
 
     _createResizingConfig: function() {
         const config = this.option('direction') === 'vertical' ? this._getVerticalResizingRule() : this._getHorizontalResizingRule();
-        config.roundStepValue = true;
 
         if(!this.invoke('isGroupedByDate')) {
             config.stepPrecision = 'strict';

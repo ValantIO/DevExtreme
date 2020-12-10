@@ -20,6 +20,7 @@ import TextBox from './text_box';
 import { ChildDefaultTemplate } from '../core/templates/child_default_template';
 import { locate, move, resetPosition } from '../animation/translator';
 import { isDefined } from '../core/utils/type';
+import { getElementWidth } from './drop_down_editor/utils';
 
 // STYLE lookup
 
@@ -315,7 +316,7 @@ const Lookup = DropDownList.inherit({
                     dropDownOptions: {
                         closeOnOutsideClick: true,
 
-                        width: (function() { return this._getPopupWidth(); }).bind(this),
+                        width: () => getElementWidth(this.$element()),
                         height: (function() { return this._getPopupHeight(); }).bind(this),
                         showTitle: false,
 
@@ -658,10 +659,6 @@ const Lookup = DropDownList.inherit({
         }
     },
 
-    _getPopupWidth: function() {
-        return $(this.element()).outerWidth();
-    },
-
     _renderPopup: function() {
         if(this.option('usePopover') && !this.option('dropDownOptions.fullScreen')) {
             if(this.option('_scrollToSelectedItemEnabled')) {
@@ -683,6 +680,7 @@ const Lookup = DropDownList.inherit({
                 showEvent: null,
                 hideEvent: null,
                 target: this.$element(),
+                _fixedPosition: false,
                 fullScreen: false,
                 shading: false,
                 closeOnTargetScroll: true,
@@ -901,6 +899,7 @@ const Lookup = DropDownList.inherit({
         }
 
         e.preventDefault();
+        this._saveValueChangeEvent(e);
         this._selectListItem(e.itemData, $itemElement);
     },
 

@@ -71,10 +71,11 @@ class FileManagerEditingControl extends Widget {
     }
 
     _getFileUploaderController() {
+        const uploadDirectory = this.uploadDirectoryInfo.fileItem;
         return {
             chunkSize: this._controller.getFileUploadChunkSize(),
-            uploadFileChunk: (fileData, chunksInfo) => this._controller.uploadFileChunk(fileData, chunksInfo, this.uploadDirectoryInfo?.fileItem),
-            abortFileUpload: (fileData, chunksInfo) => this._controller.abortFileUpload(fileData, chunksInfo, this.uploadDirectoryInfo?.fileItem)
+            uploadFileChunk: (fileData, chunksInfo) => this._controller.uploadFileChunk(fileData, chunksInfo, uploadDirectory),
+            abortFileUpload: (fileData, chunksInfo) => this._controller.abortFileUpload(fileData, chunksInfo, uploadDirectory)
         };
     }
 
@@ -224,16 +225,16 @@ class FileManagerEditingControl extends Widget {
         this._notificationControl.addOperationDetails(operationInfo, details, context.actionMetadata.allowCancel);
     }
 
-    _onEditActionError(actionInfo, error) {
+    _onEditActionError(actionInfo, errorInfo) {
         const { context, operationInfo } = actionInfo.customData;
         context.singleRequest = actionInfo.singleRequest;
-        this._handleActionError(operationInfo, context, error);
+        this._handleActionError(operationInfo, context, errorInfo);
         this._completeAction(operationInfo, context);
     }
 
-    _onEditActionItemError(actionInfo, info) {
+    _onEditActionItemError(actionInfo, errorInfo) {
         const { context, operationInfo } = actionInfo.customData;
-        this._handleActionError(operationInfo, context, info);
+        this._handleActionError(operationInfo, context, errorInfo);
     }
 
     _onCompleteEditActionItem(actionInfo, info) {
@@ -276,13 +277,13 @@ class FileManagerEditingControl extends Widget {
 
     _tryMove(itemInfos) {
         itemInfos = itemInfos || this._model.getMultipleSelectedItems();
-        return this._showDialog(this._dialogManager.getMoveDialog())
+        return this._showDialog(this._dialogManager.getMoveDialog(itemInfos))
             .then(({ folder }) => this._controller.moveItems(itemInfos, folder));
     }
 
     _tryCopy(itemInfos) {
         itemInfos = itemInfos || this._model.getMultipleSelectedItems();
-        return this._showDialog(this._dialogManager.getCopyDialog())
+        return this._showDialog(this._dialogManager.getCopyDialog(itemInfos))
             .then(({ folder }) => this._controller.copyItems(itemInfos, folder));
     }
 
@@ -354,7 +355,7 @@ class FileManagerEditingControl extends Widget {
 
     _getErrorText(errorInfo, itemInfo, itemName) {
         itemName = itemName || itemInfo?.fileItem.name;
-        const errorText = FileManagerMessages.get(errorInfo.errorId, itemName);
+        const errorText = errorInfo.errorText || FileManagerMessages.get(errorInfo.errorId, itemName);
 
         const errorArgs = {
             fileSystemItem: itemInfo?.fileItem,

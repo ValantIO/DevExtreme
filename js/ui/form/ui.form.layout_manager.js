@@ -44,7 +44,8 @@ import {
     FIELD_ITEM_CONTENT_CLASS,
     FIELD_EMPTY_ITEM_CLASS,
     FIELD_BUTTON_ITEM_CLASS,
-    SINGLE_COLUMN_ITEM_CONTENT } from './constants';
+    SINGLE_COLUMN_ITEM_CONTENT,
+    ROOT_SIMPLE_ITEM_CLASS } from './constants';
 
 import '../text_box';
 import '../number_box';
@@ -435,6 +436,10 @@ const LayoutManager = Widget.inherit({
                 if(e.location.col === 0) {
                     $fieldItem.addClass(LAYOUT_MANAGER_FIRST_COL_CLASS);
                 }
+
+                if(item.itemType === SIMPLE_ITEM_TYPE && that.option('isRoot')) {
+                    $itemElement.addClass(ROOT_SIMPLE_ITEM_CLASS);
+                }
                 const isLastColumn = (e.location.col === colCount - 1) || (e.location.col + e.location.colspan === colCount);
                 const rowsCount = that._getRowsCount();
                 const isLastRow = e.location.row === rowsCount - 1;
@@ -673,9 +678,14 @@ const LayoutManager = Widget.inherit({
 
         const editorElem = $editor.children().first();
         const $validationTarget = editorElem.hasClass(TEMPLATE_WRAPPER_CLASS) ? editorElem.children().first() : editorElem;
+        const validationTargetInstance = $validationTarget && $validationTarget.data('dx-validation-target');
 
-        if($validationTarget && $validationTarget.data('dx-validation-target')) {
+        if(validationTargetInstance) {
             that._renderValidator($validationTarget, item);
+
+            if(isMaterial()) {
+                that._addWrapperInvalidClass(validationTargetInstance);
+            }
         }
 
         that._renderHelpText(item, $editor, helpID);
@@ -931,10 +941,6 @@ const LayoutManager = Widget.inherit({
                 editorInstance.setAria('describedby', renderOptions.helpID);
                 editorInstance.setAria('labelledby', renderOptions.labelID);
                 editorInstance.setAria('required', renderOptions.isRequired);
-
-                if(isMaterial()) {
-                    that._addWrapperInvalidClass(editorInstance);
-                }
 
                 if(renderOptions.dataField) {
                     that._bindDataField(editorInstance, renderOptions, $container);

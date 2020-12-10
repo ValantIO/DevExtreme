@@ -1573,8 +1573,10 @@ QUnit.module('Integration: Appointments', {
 
                 const pointer = pointerMock($appointment).start().down().move(10, 10);
 
-                assert.roughEqual(translator.locate($appointment).top, startPosition.top + 10, 1.5, 'Start position is correct');
-                assert.roughEqual(translator.locate($appointment).left, startPosition.left + 10, 1.5, 'Start position is correct');
+                const $draggedAppointment = $(this.instance.$element().find('.' + APPOINTMENT_CLASS)).parent().eq(0);
+
+                assert.roughEqual(translator.locate($draggedAppointment).top, startPosition.top + 10, 1.5, 'Start position is correct');
+                assert.roughEqual(translator.locate($draggedAppointment).left, startPosition.left + 10, 1.5, 'Start position is correct');
 
                 $(this.instance.$element().find('.' + DATE_TABLE_CELL_CLASS)).eq(7).trigger(dragEvents.enter);
                 pointer.up();
@@ -1629,8 +1631,10 @@ QUnit.module('Integration: Appointments', {
 
                 const pointer = pointerMock($appointment).start().down().move(10, 10);
 
-                assert.roughEqual(translator.locate($appointment).top, startPosition.top + 10, 2.1, 'Start position is correct');
-                assert.roughEqual(translator.locate($appointment).left, startPosition.left + 10, 1.5, 'Start position is correct');
+                const $draggedAppointment = $(this.instance.$element().find('.' + APPOINTMENT_CLASS)).parent().eq(0);
+
+                assert.roughEqual(translator.locate($draggedAppointment).top, startPosition.top + 10, 2.1, 'Start position is correct');
+                assert.roughEqual(translator.locate($draggedAppointment).left, startPosition.left + 10, 1.5, 'Start position is correct');
 
                 $(this.instance.$element().find('.dx-scheduler-all-day-table-cell')).eq(11).trigger(dragEvents.enter);
                 pointer.up();
@@ -4762,6 +4766,50 @@ QUnit.module('Integration: Appointments', {
             });
 
             assert.equal(scheduler.appointments.getAppointmentPosition(0).top, scheduler.appointments.getAppointmentPosition(1).top, 'Appointment positions are correct');
+        });
+
+        QUnit.test('targetedAppointmentData should has valid targeted resource on onAppointmentClick event', function(assert) {
+            const data = [{
+                text: 'Website Re-Design Plan',
+                priorityId: [1, 2],
+                startDate: new Date(2021, 4, 21, 1),
+                endDate: new Date(2021, 4, 21, 1, 30)
+            }];
+
+            const priorityData = [{
+                text: 'Low Priority',
+                id: 1
+            }, {
+                text: 'High Priority',
+                id: 2
+            }];
+
+            let currentResourceId = 1;
+
+            const scheduler = createWrapper({
+                dataSource: data,
+                views: ['day'],
+                onAppointmentClick: e => {
+                    const assertText = `priorityId should be equal ${currentResourceId} of targetedAppointmentData`;
+                    assert.equal(e.targetedAppointmentData.priorityId, currentResourceId, assertText);
+                    assert.equal(e.appointmentData, data[0], 'e.appointmentData should be equal item of dataSource');
+
+                    currentResourceId++;
+                },
+                currentView: 'day',
+                currentDate: new Date(2021, 4, 21),
+                groups: ['priorityId'],
+                resources: [{
+                    fieldExpr: 'priorityId',
+                    dataSource: priorityData,
+                    label: 'Priority'
+                }]
+            });
+
+            scheduler.appointments.click(0);
+            scheduler.appointments.click(1);
+
+            assert.expect(4);
         });
     });
 });

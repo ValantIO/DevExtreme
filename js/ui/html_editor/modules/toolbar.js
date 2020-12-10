@@ -389,7 +389,7 @@ if(Quill) {
 
         get _defaultPasteIndex() {
             const selection = this.quill.getSelection();
-            return selection && selection.index || this.quill.getLength();
+            return isDefined(selection?.index) ? selection.index : this.quill.getLength();
         }
 
         get _imageFormItems() {
@@ -724,7 +724,7 @@ if(Quill) {
                 this._markActiveFormatWidget(formatName, formatWidget, formats);
             }
 
-            this._toggleClearFormatting(hasFormats);
+            this._toggleClearFormatting(hasFormats || selection.length > 1);
         }
 
         _markActiveFormatWidget(name, widget, formats) {
