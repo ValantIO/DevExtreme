@@ -898,7 +898,7 @@ class Scheduler extends Widget {
 
     _dimensionChanged() {
         const filteredItems = this.getFilteredItems();
-
+        this._schedulerWidth = null;
         this._toggleSmallClass();
 
         if(!this._isAgenda() && filteredItems && this._isVisible()) {
@@ -906,9 +906,10 @@ class Scheduler extends Widget {
             this._workSpace.option('allDayExpanded', this._isAllDayExpanded(filteredItems));
             this._workSpace._dimensionChanged();
 
-            const appointments = this._layoutManager.createAppointmentsMap(filteredItems);
-
-            this._appointments.option('items', appointments);
+            if(this._workSpace._getWorkSpaceWidth() <= this._getSchedulerWidth()) {
+                const appointments = this._layoutManager.createAppointmentsMap(filteredItems);
+                this._appointments.option('items', appointments);
+            }
         }
 
         this.hideAppointmentTooltip();
@@ -917,13 +918,21 @@ class Scheduler extends Widget {
         this._appointmentPopup.updatePopupFullScreenMode();
     }
 
+    _getSchedulerWidth() {
+        if(!this._schedulerWidth) {
+            this._schedulerWidth = getBoundingRect(this.$element().get(0)).width;
+        }
+        return this._schedulerWidth;
+    }
+
     _clean() {
+        this._schedulerWidth = null;
         this._cleanPopup();
         super._clean();
     }
 
     _toggleSmallClass() {
-        const width = getBoundingRect(this.$element().get(0)).width;
+        const width = this._getSchedulerWidth();
         this.$element().toggleClass(WIDGET_SMALL_CLASS, width < WIDGET_SMALL_WIDTH);
     }
 
@@ -1634,6 +1643,7 @@ class Scheduler extends Widget {
     }
 
     _cleanWorkspace() {
+        this._schedulerWidth = null;
         this._appointments.$element().detach();
         this._workSpace._dispose();
         this._workSpace.$element().remove();
@@ -2061,15 +2071,14 @@ class Scheduler extends Widget {
         const appointment = this.createAppointmentAdapter(rawAppointment);
         const recurrenceException = appointment.recurrenceException;
 
-        if(recurrenceException) {
-            const exceptions = recurrenceException.split(',');
-
-            for(let i = 0; i < exceptions.length; i++) {
-                exceptions[i] = this._convertRecurrenceException(exceptions[i], appointment.startDate);
-            }
-
-            return exceptions.join();
-        }
+        // JLB - we don't send timezone dates to dx, so this isn't needed for Valant
+        // if (recurrenceException) {
+        //     const exceptions = recurrenceException.split(',');
+        //     for(let i = 0; i < exceptions.length; i++) {
+        //         exceptions[i] = this._convertRecurrenceException(exceptions[i], appointment.startDate);
+        //     }
+        //    return exceptions.join();
+        // }
 
         return recurrenceException;
     }

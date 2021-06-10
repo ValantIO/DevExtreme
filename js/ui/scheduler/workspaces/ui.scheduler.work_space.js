@@ -139,10 +139,12 @@ class ScrollSemaphore {
     }
 
     release() {
-        this.counter--;
-        if(this.counter < 0) {
-            this.counter = 0;
-        }
+        setTimeout(() => {
+            this.counter--;
+            if(this.counter < 0) {
+                this.counter = 0;
+            }
+        }, 200);
     }
 }
 
@@ -937,6 +939,7 @@ class SchedulerWorkSpace extends WidgetObserver {
             useKeyboard: false,
             bounceEnabled: false,
             updateManually: true,
+            useNative: true // Valant change
         };
         if(this._needCreateCrossScrolling()) {
             config = extend(config, this._createCrossScrollingConfig());
@@ -950,12 +953,13 @@ class SchedulerWorkSpace extends WidgetObserver {
         config.direction = 'both';
 
         config.onScroll = e => {
+            if(!this._sideBarSemaphore.isFree() && !this._headerSemaphore.isFree()) {
+                return;
+            }
             this._dataTableSemaphore.take();
-
             this._sideBarSemaphore.isFree() && this._sidebarScrollable && this._sidebarScrollable.scrollTo({
                 top: e.scrollOffset.top
             });
-
             this._headerSemaphore.isFree() && this._headerScrollable && this._headerScrollable.scrollTo({
                 left: e.scrollOffset.left
             });
@@ -1020,12 +1024,15 @@ class SchedulerWorkSpace extends WidgetObserver {
             useKeyboard: false,
             showScrollbar: false,
             direction: 'horizontal',
-            useNative: false,
+            useNative: true,
             updateManually: true,
             bounceEnabled: false,
             onScroll: e => {
+                if(!this._dataTableSemaphore.isFree()) {
+                    return;
+                }
                 this._headerSemaphore.take();
-                this._dataTableSemaphore.isFree() && this._dateTableScrollable.scrollTo({ left: e.scrollOffset.left });
+                this._dateTableScrollable.scrollTo({ left: e.scrollOffset.left });
                 this._headerSemaphore.release();
             }
         };
@@ -1042,12 +1049,15 @@ class SchedulerWorkSpace extends WidgetObserver {
             useKeyboard: false,
             showScrollbar: false,
             direction: 'vertical',
-            useNative: false,
+            useNative: true,
             updateManually: true,
             bounceEnabled: false,
             onScroll: e => {
+                if(!this._dataTableSemaphore.isFree()) {
+                    return;
+                }
                 this._sideBarSemaphore.take();
-                this._dataTableSemaphore.isFree() && this._dateTableScrollable.scrollTo({ top: e.scrollOffset.top });
+                this._dateTableScrollable.scrollTo({ top: e.scrollOffset.top });
                 this._sideBarSemaphore.release();
             }
         });
