@@ -115,20 +115,21 @@ export const _appointmentPartInInterval = (startDate, endDate, startDayHour, end
 export const getRecurrenceException = (appointmentAdapter, timeZoneCalculator, timeZone) => {
     const recurrenceException = appointmentAdapter.recurrenceException;
 
-    if(recurrenceException) {
-        const exceptions = recurrenceException.split(',');
+    // JLB - we don't send timezone dates to dx, so this isn't needed for Valant
+    // if(recurrenceException) {
+    //     const exceptions = recurrenceException.split(',');
 
-        for(let i = 0; i < exceptions.length; i++) {
-            exceptions[i] = _convertRecurrenceException(
-                exceptions[i],
-                appointmentAdapter.startDate,
-                timeZoneCalculator,
-                timeZone
-            );
-        }
+    //     for(let i = 0; i < exceptions.length; i++) {
+    //         exceptions[i] = _convertRecurrenceException(
+    //             exceptions[i],
+    //             appointmentAdapter.startDate,
+    //             timeZoneCalculator,
+    //             timeZone
+    //         );
+    //     }
 
-        return exceptions.join();
-    }
+    //     return exceptions.join();
+    // }
 
     return recurrenceException;
 };
