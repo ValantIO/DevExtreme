@@ -857,15 +857,17 @@ class Scheduler extends Widget {
     }
 
     _dimensionChanged() {
+        this._schedulerWidth = null;
         this._toggleSmallClass();
 
         if(!this._isAgenda() && this.filteredItems && this._isVisible()) {
             this._workSpace.option('allDayExpanded', this._isAllDayExpanded(this.filteredItems));
             this._workSpace._dimensionChanged();
 
-            const appointments = this.getLayoutManager().createAppointmentsMap(this.filteredItems);
-
-            this._appointments.option('items', appointments);
+            if(this._workSpace._getWorkSpaceWidth() <= this._getSchedulerWidth()) {
+                const appointments = this._layoutManager.createAppointmentsMap(filteredItems);
+                this._appointments.option('items', appointments);
+            }
         }
 
         this.hideAppointmentTooltip();
@@ -875,13 +877,21 @@ class Scheduler extends Widget {
         this._appointmentPopup.updatePopupFullScreenMode();
     }
 
+    _getSchedulerWidth() {
+        if(!this._schedulerWidth) {
+            this._schedulerWidth = getBoundingRect(this.$element().get(0)).width;
+        }
+        return this._schedulerWidth;
+    }
+
     _clean() {
+        this._schedulerWidth = null;
         this._cleanPopup();
         super._clean();
     }
 
     _toggleSmallClass() {
-        const width = getBoundingRect(this.$element().get(0)).width;
+        const width = this._getSchedulerWidth();
         this.$element().toggleClass(WIDGET_SMALL_CLASS, width < WIDGET_SMALL_WIDTH);
     }
 
@@ -1658,6 +1668,7 @@ class Scheduler extends Widget {
     }
 
     _cleanWorkspace() {
+        this._schedulerWidth = null;
         this._appointments.$element().detach();
         this._workSpace._dispose();
         this._workSpace.$element().remove();

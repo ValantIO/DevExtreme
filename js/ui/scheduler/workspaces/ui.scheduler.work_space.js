@@ -457,6 +457,7 @@ class SchedulerWorkSpace extends WidgetObserver {
             useKeyboard: false,
             bounceEnabled: false,
             updateManually: true,
+            useNative: true // Valant change
         };
         if(this._needCreateCrossScrolling()) {
             config = extend(config, this._createCrossScrollingConfig());
@@ -468,6 +469,9 @@ class SchedulerWorkSpace extends WidgetObserver {
             config = {
                 ...config,
                 onScroll: (e) => {
+                    if(!this._sideBarSemaphore.isFree() && !this._headerSemaphore.isFree()) {
+                        return;
+                    }
 
                     currentOnScroll?.(e);
 
@@ -509,12 +513,15 @@ class SchedulerWorkSpace extends WidgetObserver {
             useKeyboard: false,
             showScrollbar: 'never',
             direction: 'horizontal',
-            useNative: false,
+            useNative: true,
             updateManually: true,
             bounceEnabled: false,
             onScroll: e => {
+                if(!this._dataTableSemaphore.isFree()) {
+                    return;
+                }
                 this._headerSemaphore.take();
-                this._dataTableSemaphore.isFree() && this._dateTableScrollable.scrollTo({ left: e.scrollOffset.left });
+                this._dateTableScrollable.scrollTo({ left: e.scrollOffset.left });
                 this._headerSemaphore.release();
             }
         };
@@ -2426,12 +2433,16 @@ class SchedulerWorkSpace extends WidgetObserver {
             useKeyboard: false,
             showScrollbar: 'never',
             direction: 'vertical',
-            useNative: false,
+            useNative: true,
             updateManually: true,
             bounceEnabled: false,
             onScroll: e => {
+                if(!this._dataTableSemaphore.isFree()) {
+                    return;
+                }
+
                 this._sideBarSemaphore.take();
-                this._dataTableSemaphore.isFree() && this._dateTableScrollable.scrollTo({ top: e.scrollOffset.top });
+                this._dateTableScrollable.scrollTo({ top: e.scrollOffset.top });
                 this._sideBarSemaphore.release();
             }
         });
